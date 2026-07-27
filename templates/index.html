@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音画随心 - 极速音视频处理工坊</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #f8fafc;
+            --bg-card: #ffffff;
+            --bg-secondary: #f1f5f9;
+            --border-color: #e2e8f0;
+            --text-primary: #0f172a;
+            --text-secondary: #64748b;
+            --text-muted: #94a3b8;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --radius: 12px;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: var(--bg-primary); color: var(--text-primary); min-height: 100vh; display: flex; flex-direction: column; }
+        header { background-color: var(--bg-card); border-bottom: 1px solid var(--border-color); padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
+        .brand { display: flex; align-items: center; gap: 0.75rem; }
+        .brand-icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--primary), #4f46e5); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 1.2rem; }
+        .brand-title { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.02em; }
+        .header-actions { display: flex; gap: 1rem; align-items: center; }
+        
+        .main-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; padding: 1.25rem; max-width: 1600px; margin: 0 auto; width: 100%; flex: 1; }
+        .card { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.25rem; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 1rem; }
+        .card-header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color); }
+        .card-title { font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+        .badge { font-size: 0.75rem; padding: 0.25rem 0.6rem; border-radius: 9999px; font-weight: 500; }
+        .badge-blue { background: #dbeafe; color: #1e40af; }
+        .badge-green { background: #d1fae5; color: #065f46; }
+
+        .file-input-group { display: flex; gap: 0.5rem; }
+        input[type="text"], input[type="datetime-local"], select { width: 100%; padding: 0.6rem 0.8rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.875rem; background-color: var(--bg-primary); color: var(--text-primary); outline: none; transition: border-color 0.2s, box-shadow 0.2s; }
+        input[type="text"]:focus, select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+        
+        .btn { padding: 0.6rem 1.2rem; border-radius: 8px; font-weight: 500; font-size: 0.875rem; cursor: pointer; border: 1px solid transparent; display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; transition: all 0.2s ease; white-space: nowrap; }
+        .btn-primary { background-color: var(--primary); color: white; }
+        .btn-primary:hover { background-color: var(--primary-hover); }
+        .btn-secondary { background-color: var(--bg-secondary); color: var(--text-primary); border-color: var(--border-color); }
+        .btn-secondary:hover { background-color: #e2e8f0; }
+        .btn-success { background-color: var(--success); color: white; }
+        .btn-success:hover { background-color: #059669; }
+
+        .video-container { width: 100%; height: 240px; background-color: #000; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative; }
+        video { width: 100%; height: 100%; object-fit: contain; }
+        .video-placeholder { color: var(--text-muted); font-size: 0.875rem; text-align: center; }
+
+        .range-slider-group { display: flex; flex-direction: column; gap: 0.5rem; background: var(--bg-secondary); padding: 1rem; border-radius: 8px; }
+        .time-display { display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 500; color: var(--text-secondary); margin-bottom: 0.5rem; }
+        
+        /* Dual Range Slider Styles */
+        .dual-slider { position: relative; width: 100%; height: 24px; user-select: none; margin-bottom: 0.5rem; }
+        .dual-slider-track { position: absolute; top: 50%; transform: translateY(-50%); height: 6px; width: 100%; background: #cbd5e1; border-radius: 3px; }
+        .dual-slider-range { position: absolute; top: 50%; transform: translateY(-50%); height: 6px; background: var(--primary); border-radius: 3px; }
+        .dual-slider-thumb { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 16px; height: 16px; background: white; border: 2px solid var(--primary); border-radius: 50%; cursor: grab; z-index: 2; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        .dual-slider-thumb:active { cursor: grabbing; transform: translate(-50%, -50%) scale(1.1); }
+        
+        .full-width-card { grid-column: 1 / -1; }
+        .timeline-container { background: #ffffff; border: 1px solid var(--border-color); border-radius: 8px; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
+        .timeline-header { display: flex; justify-content: space-between; align-items: center; }
+        .timeline-track-wrapper { position: relative; background-color: #f1f5f9; border: 1px solid var(--border-color); border-radius: 8px; height: 100px; overflow: hidden; display: flex; flex-direction: column; justify-content: space-around; padding: 0.5rem; }
+        .track { height: 36px; border-radius: 6px; position: relative; display: flex; align-items: center; padding: 0 0.5rem; font-size: 0.75rem; font-weight: 600; }
+        .track-video { background-color: #cbd5e1; color: #334155; width: 100%; }
+        .track-audio-clip { position: absolute; height: 36px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; box-shadow: 0 2px 4px rgba(37,99,235,0.2); transition: left 0.1s ease, width 0.1s ease; }
+        
+        .app-container { max-width: 1600px; margin: 0 auto; width: 100%; padding: 1.25rem; flex: 1; display: flex; flex-direction: column; gap: 1.25rem; }
+        .module-tabs { display: flex; gap: 1rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.75rem; }
+        .tab-btn { background: var(--bg-card); border: 1px solid var(--border-color); padding: 0.85rem 1.5rem; border-radius: var(--radius); cursor: pointer; display: flex; align-items: center; gap: 0.85rem; transition: all 0.2s ease; opacity: 0.75; box-shadow: var(--shadow); }
+        .tab-btn:hover { opacity: 1; border-color: var(--primary); }
+        .tab-btn.active { opacity: 1; background: white; border-color: var(--primary); border-width: 2px; box-shadow: var(--shadow-lg); }
+        .tab-icon { font-size: 1.6rem; }
+        .tab-text { text-align: left; }
+        .tab-title { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); display: block; }
+        .tab-sub { font-size: 0.78rem; color: var(--text-secondary); display: block; margin-top: 0.15rem; }
+
+        .module-panel { display: none; }
+        .module-panel.active { display: grid; }
+        .grid-2 { grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+
+        .overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.5); display: none; align-items: center; justify-content: center; z-index: 100; backdrop-filter: blur(4px); }
+        .modal { background: white; padding: 2rem; border-radius: var(--radius); box-shadow: var(--shadow-lg); width: 400px; text-align: center; display: flex; flex-direction: column; gap: 1rem; }
+        .spinner { width: 40px; height: 40px; border: 4px solid var(--border-color); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="brand">
+            <img src="/static/logo.png" alt="Logo" style="width: 38px; height: 38px; border-radius: 9px; object-fit: cover; box-shadow: 0 2px 6px rgba(0,0,0,0.15);">
+            <div>
+                <div class="brand-title">音画随心 - 极速音视频处理工坊</div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary);">极速音轨替换 · MP3提取混音 · 视频创建时间改写</div>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-success" id="headerExportBtn" onclick="showExportModal()">导出视频</button>
+        </div>
+    </header>
+
+    <div class="app-container">
+        <!-- 顶部功能模块切换栏 -->
+        <div class="module-tabs">
+            <button class="tab-btn active" id="tabAudioBtn" onclick="switchTab('audio')">
+                <span class="tab-icon">🎵</span>
+                <div class="tab-text">
+                    <span class="tab-title">视频间音轨替换</span>
+                    <span class="tab-sub">提取源视频音频，替换目标视频全轨或指定起点插入</span>
+                </div>
+            </button>
+            <button class="tab-btn" id="tabTimeBtn" onclick="switchTab('time')">
+                <span class="tab-icon">⏱️</span>
+                <div class="tab-text">
+                    <span class="tab-title">修改视频创建时间</span>
+                    <span class="tab-sub">独立修改单个视频属性 (直接改写元数据，无需重编音频)</span>
+                </div>
+            </button>
+            <button class="tab-btn" id="tabMp3Btn" onclick="switchTab('mp3')">
+                <span class="tab-icon">🎧</span>
+                <div class="tab-text">
+                    <span class="tab-title">提取与导入 MP3</span>
+                    <span class="tab-sub">单独导出MP3，或将MP3混入目标视频局部保留原声</span>
+                </div>
+            </button>
+        </div>
+
+        <!-- 视频音轨替换 -->
+        <div class="module-panel grid-2 active" id="panelAudioTrack">
+            <!-- 左侧：源视频 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">🎵 源视频 (音频来源)</div>
+                    <span class="badge badge-blue">提取音频</span>
+                </div>
+                <div class="file-input-group">
+                    <input type="text" id="srcPath" placeholder="输入源视频本地路径，或点击上传..." onchange="loadVideoInfo('src')">
+                    <button class="btn btn-secondary" onclick="triggerUpload('src')">浏览/上传</button>
+                    <input type="file" id="srcFileInput" style="display: none;" accept="video/*" onchange="handleFileUpload('src')">
+                </div>
+                <div class="video-container">
+                    <video id="srcVideo" controls></video>
+                    <div class="video-placeholder" id="srcPlaceholder">选择或拖入源视频预览</div>
+                </div>
+                <div class="range-slider-group">
+                    <div class="time-display">
+                        <span>拖动选取音频提取片段</span>
+                        <span id="srcTimeText">00:00.0 - 00:00.0 (时长: 0s)</span>
+                    </div>
+                    <div class="dual-slider" id="srcSlider">
+                        <div class="dual-slider-track"></div>
+                        <div class="dual-slider-range"></div>
+                        <div class="dual-slider-thumb thumb-left"></div>
+                        <div class="dual-slider-thumb thumb-right"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：目标视频 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">🎬 目标视频 (画面来源)</div>
+                    <span class="badge badge-green">画面与主轨</span>
+                </div>
+                <div class="file-input-group">
+                    <input type="text" id="targetPath" placeholder="输入目标视频本地路径，或点击上传..." onchange="loadVideoInfo('target')">
+                    <button class="btn btn-secondary" onclick="triggerUpload('target')">浏览/上传</button>
+                    <input type="file" id="targetFileInput" style="display: none;" accept="video/*" onchange="handleFileUpload('target')">
+                </div>
+                <div class="video-container">
+                    <video id="targetVideo" controls></video>
+                    <div class="video-placeholder" id="targetPlaceholder">选择或拖入目标视频预览</div>
+                </div>
+                <div class="range-slider-group">
+                    <div class="time-display">
+                        <div class="time-input-box" style="flex-direction: row; align-items: center; gap: 0.5rem;">
+                            <label>替换模式:</label>
+                            <select id="replaceMode" onchange="toggleReplaceMode()" style="padding: 0.2rem 0.5rem; width: auto;">
+                                <option value="full">替换整个音频轨</option>
+                                <option value="segment">指定位置插入替换</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="time-input-box" id="targetStartBox" style="display: none; padding-top: 0.5rem;">
+                        <label style="display: flex; justify-content: space-between;">
+                            <span>目标视频插入起点 (拖动快速定位)</span>
+                            <span id="targetTimeText" style="color: var(--primary); font-weight: 600;">插入起点: 00:00.0</span>
+                        </label>
+                        <input type="range" id="targetStart" min="0" max="100" step="0.1" value="0" style="width: 100%; margin-top: 0.5rem; cursor: pointer;" oninput="onTargetStartChange()">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 模块二：视频时间编辑 -->
+        <div class="module-panel grid-2" id="panelTimeEdit">
+            <!-- 左侧：预览窗口 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">📹 待修改视频预览</div>
+                    <span class="badge badge-blue">视频播放与元数据</span>
+                </div>
+                <div class="video-container" style="height: 280px;">
+                    <video id="timeOnlyVideo" controls style="display: none;"></video>
+                    <div class="video-placeholder" id="timeOnlyPlaceholder">请在右侧选择或上传需要修改时间的视频</div>
+                </div>
+                <div id="timeOnlyInfoText" style="font-size: 0.85rem; color: var(--text-secondary); text-align: center;">
+                    尚未选择视频
+                </div>
+            </div>
+
+            <!-- 右侧：时间修改表单 -->
+            <div class="card" style="justify-content: space-between;">
+                <div>
+                    <div class="card-header" style="margin-bottom: 1rem;">
+                        <div class="card-title" style="color: var(--primary);">⏱️ 视频创建时间属性修改</div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                        <div class="time-input-box">
+                            <label style="font-size: 0.85rem; font-weight: 600;">1. 选择视频文件</label>
+                            <div class="file-input-group">
+                                <input type="text" id="timeOnlyPath" placeholder="输入视频绝对路径，或点击上传..." onchange="loadVideoInfo('timeOnly')">
+                                <button class="btn btn-secondary" onclick="triggerUpload('timeOnly')">浏览/上传</button>
+                                <input type="file" id="timeOnlyFileInput" style="display: none;" accept="video/*" onchange="handleFileUpload('timeOnly')">
+                            </div>
+                        </div>
+
+                        <div class="time-input-box">
+                            <label style="font-size: 0.85rem; font-weight: 600;">2. 设置创建时间 (Creation Time)</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input type="text" id="timeOnlyVal" placeholder="YYYY-MM-DD HH:MM:SS">
+                                <button class="btn btn-secondary" onclick="setNowTimeOnly()">填入当前时间</button>
+                            </div>
+                        </div>
+
+                        <div class="time-input-box" style="padding: 0.75rem; background: var(--bg-secondary); border-radius: 8px;">
+                            <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; font-size: 0.875rem;">
+                                <input type="checkbox" id="timeOnlyOverwrite" style="width: 18px; height: 18px;">
+                                <span>直接覆盖原视频文件 (取消勾选将自动保存为副本)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                    <button class="btn btn-primary" onclick="modifyTimeOnly()" style="width: 100%; padding: 0.8rem; font-size: 1rem; font-weight: 600;">
+                        ⚡ 一键修改创建时间
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 提取与导入 MP3 -->
+        <div class="module-panel grid-2" id="panelMp3">
+            <!-- 左侧：导出MP3 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">🎵 从视频提取并导出 MP3</div>
+                    <span class="badge badge-blue">仅处理音频</span>
+                </div>
+                <div class="file-input-group">
+                    <input type="text" id="mp3ExtractPath" placeholder="输入源视频本地路径..." onchange="loadVideoInfo('mp3Extract')">
+                    <button class="btn btn-secondary" onclick="triggerUpload('mp3Extract')">浏览/上传</button>
+                    <input type="file" id="mp3ExtractFileInput" style="display: none;" accept="video/*" onchange="handleFileUpload('mp3Extract')">
+                </div>
+                <div class="video-container" style="height: 160px;">
+                    <video id="mp3ExtractVideo" controls style="display: none;"></video>
+                    <div class="video-placeholder" id="mp3ExtractPlaceholder">预览待提取的视频</div>
+                </div>
+                <div class="range-slider-group">
+                    <div class="time-display">
+                        <span>拖动选取要导出为MP3的音频片段</span>
+                        <span id="mp3ExtractTimeText">00:00.0 - 00:00.0 (时长: 0s)</span>
+                    </div>
+                    <div class="dual-slider" id="mp3ExtractSlider">
+                        <div class="dual-slider-track"></div>
+                        <div class="dual-slider-range"></div>
+                        <div class="dual-slider-thumb thumb-left"></div>
+                        <div class="dual-slider-thumb thumb-right"></div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+                    <button class="btn btn-secondary" style="flex: 1;" onclick="previewMp3()">🎧 预览这段音频</button>
+                    <button class="btn btn-primary" style="flex: 1;" onclick="exportMp3()">💾 导出为 MP3</button>
+                </div>
+            </div>
+
+            <!-- 右侧：导入MP3替换视频局部 -->
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">🎬 导入 MP3 替换视频局部音频</div>
+                    <span class="badge badge-green">区间精准替换</span>
+                </div>
+                <div class="file-input-group">
+                    <input type="text" id="mp3ImportPath" placeholder="输入要导入的 MP3 文件路径..." onchange="loadVideoInfo('mp3Import')">
+                    <button class="btn btn-secondary" onclick="triggerUpload('mp3Import')">上传 MP3</button>
+                    <input type="file" id="mp3ImportFileInput" style="display: none;" accept="audio/*" onchange="handleFileUpload('mp3Import')">
+                </div>
+                <div class="file-input-group" style="margin-top: 0.5rem;">
+                    <input type="text" id="mp3TargetPath" placeholder="输入目标视频路径..." onchange="loadVideoInfo('mp3Target')">
+                    <button class="btn btn-secondary" onclick="triggerUpload('mp3Target')">上传目标视频</button>
+                    <input type="file" id="mp3TargetFileInput" style="display: none;" accept="video/*" onchange="handleFileUpload('mp3Target')">
+                </div>
+                <div class="video-container" style="height: 160px; margin-top: 0.5rem;">
+                    <video id="mp3TargetVideo" controls style="display: none;"></video>
+                    <div class="video-placeholder" id="mp3TargetPlaceholder">预览目标视频</div>
+                </div>
+                <div class="range-slider-group">
+                    <div class="time-input-box" id="mp3TargetStartBox" style="padding-top: 0.5rem;">
+                        <label style="display: flex; justify-content: space-between;">
+                            <span>指定 MP3 插入起点 (严格向后替换，其余保留原声)</span>
+                            <span id="mp3TargetTimeText" style="color: var(--primary); font-weight: 600;">插入起点: 00:00.0</span>
+                        </label>
+                        <input type="range" id="mp3TargetStart" min="0" max="100" step="0.1" value="0" style="width: 100%; margin-top: 0.5rem; cursor: pointer;" oninput="onMp3TargetStartChange()">
+                    </div>
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+                    <button class="btn btn-success" style="width: 100%;" onclick="startExportFromMp3()">🚀 预览与导出 (带导入的 MP3)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导出设置弹窗 -->
+    <div class="overlay" id="exportModalOverlay">
+        <div class="modal" style="width: 500px; text-align: left;">
+            <h3 style="margin-bottom: 0.5rem; font-size: 1.25rem;">导出视频设置</h3>
+            
+            <div class="time-input-box">
+                <label>输出文件名称</label>
+                <input type="text" id="outFileName" placeholder="edited_video.mp4" value="edited_video.mp4">
+            </div>
+
+            <div class="time-input-box">
+                <label>保存位置</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" id="outDir" placeholder="点击右侧浏览选择文件夹，留空默认保存在目标视频目录下...">
+                    <button class="btn btn-secondary" onclick="browseFolder()">浏览...</button>
+                </div>
+            </div>
+
+            <div class="time-input-box">
+                <label>设置视频创建时间 (Creation Time)</label>
+                <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" id="creationTime" placeholder="YYYY-MM-DD HH:MM:SS (留空不修改)">
+                    <button class="btn btn-secondary" onclick="setNowTime()">当前时间</button>
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
+                <button class="btn btn-secondary" onclick="hideExportModal()">取消</button>
+                <button class="btn btn-primary" onclick="generatePreview()">先预览一下</button>
+                <button class="btn btn-success" onclick="startExport()">确定导出</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 预览播放弹窗 -->
+    <div class="overlay" id="previewModalOverlay">
+        <div class="modal" style="width: 800px; padding: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 style="font-size: 1.1rem; margin: 0; color: var(--primary);">👀 视频效果预览</h3>
+                <button class="btn btn-secondary" style="padding: 0.3rem 0.8rem;" onclick="closePreviewModal()">关闭预览</button>
+            </div>
+            <div class="video-container" style="height: 450px; background: #000; border-radius: 8px;">
+                <video id="previewVideo" controls autoplay style="width: 100%; height: 100%;"></video>
+            </div>
+            <div style="text-align: right; margin-top: 1rem; display: flex; justify-content: flex-end; gap: 1rem;">
+                <button class="btn btn-secondary" onclick="closePreviewModal()">还需要修改</button>
+                <button class="btn btn-success" onclick="closePreviewModal(); startExport()">效果完美，立刻导出！</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="overlay" id="loadingOverlay">
+        <div class="modal">
+            <div class="spinner"></div>
+            <div style="font-weight: 600; font-size: 1.1rem;" id="loadingText">正在合成视频中...</div>
+            <div style="font-size: 0.85rem; color: var(--text-secondary);">正在使用 FFmpeg 处理视频并修改属性，请稍候...</div>
+        </div>
+    </div>
+
+    <script>
+        // Custom Dual Range Slider Class
+        class DualSlider {
+            constructor(containerId, onUpdate) {
+                this.container = document.getElementById(containerId);
+                this.track = this.container.querySelector('.dual-slider-track');
+                this.range = this.container.querySelector('.dual-slider-range');
+                this.thumbLeft = this.container.querySelector('.thumb-left');
+                this.thumbRight = this.container.querySelector('.thumb-right');
+                
+                this.min = 0; this.max = 100;
+                this.val1 = 0; this.val2 = 100;
+                this.onUpdate = onUpdate;
+                this.isDragging = false;
+                this.activeThumb = null;
+
+                const startDrag = (e, thumb) => {
+                    this.isDragging = true;
+                    this.activeThumb = thumb;
+                    e.preventDefault();
+                };
+                
+                this.thumbLeft.addEventListener('mousedown', (e) => startDrag(e, 'left'));
+                this.thumbRight.addEventListener('mousedown', (e) => startDrag(e, 'right'));
+                
+                document.addEventListener('mousemove', (e) => {
+                    if (!this.isDragging) return;
+                    const rect = this.track.getBoundingClientRect();
+                    let pos = (e.clientX - rect.left) / rect.width;
+                    pos = Math.max(0, Math.min(1, pos));
+                    let val = this.min + pos * (this.max - this.min);
+                    
+                    if (this.activeThumb === 'left') {
+                        this.val1 = Math.min(val, this.val2 - 0.1);
+                    } else {
+                        this.val2 = Math.max(val, this.val1 + 0.1);
+                    }
+                    this.updateUI();
+                    if (this.onUpdate) this.onUpdate(this.val1, this.val2, this.activeThumb);
+                });
+                
+                document.addEventListener('mouseup', () => { this.isDragging = false; this.activeThumb = null; });
+            }
+            
+            init(min, max) {
+                this.min = min; this.max = max;
+                this.val1 = min; this.val2 = max;
+                this.updateUI();
+                if (this.onUpdate) this.onUpdate(this.val1, this.val2, null);
+            }
+            
+            updateUI() {
+                if (this.max === this.min) return;
+                const p1 = ((this.val1 - this.min) / (this.max - this.min)) * 100;
+                const p2 = ((this.val2 - this.min) / (this.max - this.min)) * 100;
+                this.thumbLeft.style.left = `${p1}%`;
+                this.thumbRight.style.left = `${p2}%`;
+                this.range.style.left = `${p1}%`;
+                this.range.style.width = `${p2 - p1}%`;
+            }
+        }
+
+        function formatTime(s) {
+            const m = Math.floor(s / 60);
+            const sec = (s % 60).toFixed(1);
+            return `${String(m).padStart(2, '0')}:${String(sec).padStart(4, '0')}`;
+        }
+
+        let srcInfo = { duration: 0 };
+        let targetInfo = { duration: 0 };
+        let mp3ExtractInfo = { duration: 0 };
+        let mp3TargetInfo = { duration: 0 };
+        
+        let srcVals = { start: 0, end: 0 };
+        let mp3ExtractVals = { start: 0, end: 0 };
+        let targetStartVal = 0;
+        let mp3TargetStartVal = 0;
+
+        const srcSlider = new DualSlider('srcSlider', (v1, v2, thumb) => {
+            srcVals.start = v1; srcVals.end = v2;
+            document.getElementById('srcTimeText').innerText = `${formatTime(v1)} - ${formatTime(v2)} (时长: ${(v2 - v1).toFixed(1)}s)`;
+            const video = document.getElementById('srcVideo');
+            if (thumb === 'left') video.currentTime = v1;
+            else if (thumb === 'right') video.currentTime = v2;
+        });
+
+        const mp3ExtractSlider = new DualSlider('mp3ExtractSlider', (v1, v2, thumb) => {
+            mp3ExtractVals.start = v1; mp3ExtractVals.end = v2;
+            document.getElementById('mp3ExtractTimeText').innerText = `${formatTime(v1)} - ${formatTime(v2)} (时长: ${(v2 - v1).toFixed(1)}s)`;
+            const video = document.getElementById('mp3ExtractVideo');
+            if (thumb === 'left') video.currentTime = v1;
+            else if (thumb === 'right') video.currentTime = v2;
+        });
+
+        function onTargetStartChange() {
+            const val = parseFloat(document.getElementById('targetStart').value) || 0;
+            targetStartVal = val;
+            document.getElementById('targetTimeText').innerText = `插入起点: ${formatTime(val)}`;
+            const video = document.getElementById('targetVideo');
+            video.currentTime = val;
+        }
+
+        function onMp3TargetStartChange() {
+            const val = parseFloat(document.getElementById('mp3TargetStart').value) || 0;
+            mp3TargetStartVal = val;
+            document.getElementById('mp3TargetTimeText').innerText = `插入起点: ${formatTime(val)}`;
+            const video = document.getElementById('mp3TargetVideo');
+            video.currentTime = val;
+        }
+
+        function triggerUpload(type) { document.getElementById(type + 'FileInput').click(); }
+
+        async function handleFileUpload(type) {
+            const fileInput = document.getElementById(type + 'FileInput');
+            if (!fileInput.files.length) return;
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            showLoading("正在上传视频...");
+            try {
+                const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                const data = await res.json();
+                hideLoading();
+                if (data.success) {
+                    document.getElementById(type + 'Path').value = data.filepath;
+                    setVideoSource(type, data.filepath, data.info);
+                } else alert("上传失败: " + data.error);
+            } catch (err) { hideLoading(); alert("网络错误: " + err.message); }
+        }
+
+        async function loadVideoInfo(type) {
+            const path = document.getElementById(type + 'Path').value.trim();
+            if (!path) return;
+            try {
+                const res = await fetch('/api/video_info', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filepath: path })
+                });
+                const data = await res.json();
+                if (data.success) setVideoSource(type, path, data.info);
+            } catch (err) { console.error(err); }
+        }
+
+        function switchTab(tab) {
+            document.getElementById('tabAudioBtn').classList.toggle('active', tab === 'audio');
+            document.getElementById('tabTimeBtn').classList.toggle('active', tab === 'time');
+            document.getElementById('tabMp3Btn').classList.toggle('active', tab === 'mp3');
+            
+            document.getElementById('panelAudioTrack').classList.toggle('active', tab === 'audio');
+            document.getElementById('panelTimeEdit').classList.toggle('active', tab === 'time');
+            document.getElementById('panelMp3').classList.toggle('active', tab === 'mp3');
+            
+            const exportBtn = document.getElementById('headerExportBtn');
+            if (exportBtn) exportBtn.style.display = (tab === 'audio' ? 'inline-flex' : 'none');
+        }
+
+        function setVideoSource(type, path, info) {
+            const videoEl = document.getElementById(type + 'Video');
+            const placeholder = document.getElementById(type + 'Placeholder');
+            if (placeholder) placeholder.style.display = 'none';
+            if (videoEl) {
+                videoEl.src = `/api/stream?path=${encodeURIComponent(path)}`;
+                videoEl.style.display = 'block';
+            }
+
+            if (type === 'src') {
+                srcInfo = info || { duration: videoEl.duration || 0 };
+                srcSlider.init(0, srcInfo.duration);
+            } else if (type === 'target') {
+                targetInfo = info || { duration: videoEl.duration || 0 };
+                const dur = targetInfo.duration;
+                const startEl = document.getElementById('targetStart');
+                startEl.max = dur;
+                startEl.value = 0;
+                targetStartVal = 0;
+                document.getElementById('targetTimeText').innerText = `插入起点: 00:00.0`;
+                
+                if (info && info.creation_time) document.getElementById('creationTime').value = info.creation_time;
+            } else if (type === 'mp3Extract') {
+                mp3ExtractInfo = info || { duration: videoEl.duration || 0 };
+                mp3ExtractSlider.init(0, mp3ExtractInfo.duration);
+            } else if (type === 'mp3Target') {
+                mp3TargetInfo = info || { duration: videoEl.duration || 0 };
+                const dur = mp3TargetInfo.duration;
+                const startEl = document.getElementById('mp3TargetStart');
+                startEl.max = dur;
+                startEl.value = 0;
+                mp3TargetStartVal = 0;
+                document.getElementById('mp3TargetTimeText').innerText = `插入起点: 00:00.0`;
+            } else if (type === 'timeOnly') {
+                if (info && info.creation_time) {
+                    document.getElementById('timeOnlyVal').value = info.creation_time;
+                }
+                const infoText = document.getElementById('timeOnlyInfoText');
+                if (infoText && info) {
+                    infoText.innerText = `视频时长: ${(info.duration || 0).toFixed(1)}s | 原始创建时间: ${info.creation_time || '未知'}`;
+                }
+            }
+        }
+
+        function toggleReplaceMode() {
+            const mode = document.getElementById('replaceMode').value;
+            if (mode === 'segment') {
+                document.getElementById('targetStartBox').style.display = 'block';
+            } else {
+                document.getElementById('targetStartBox').style.display = 'none';
+            }
+        }
+
+        function setNowTime() {
+            const now = new Date();
+            const y = now.getFullYear(); const m = String(now.getMonth()+1).padStart(2,'0'); const d = String(now.getDate()).padStart(2,'0');
+            const h = String(now.getHours()).padStart(2,'0'); const min = String(now.getMinutes()).padStart(2,'0'); const s = String(now.getSeconds()).padStart(2,'0');
+            document.getElementById('creationTime').value = `${y}-${m}-${d} ${h}:${min}:${s}`;
+        }
+
+        function setNowTimeOnly() {
+            const now = new Date();
+            const y = now.getFullYear(); const m = String(now.getMonth()+1).padStart(2,'0'); const d = String(now.getDate()).padStart(2,'0');
+            const h = String(now.getHours()).padStart(2,'0'); const min = String(now.getMinutes()).padStart(2,'0'); const s = String(now.getSeconds()).padStart(2,'0');
+            document.getElementById('timeOnlyVal').value = `${y}-${m}-${d} ${h}:${min}:${s}`;
+        }
+
+        async function browseFolder() {
+            try {
+                const res = await fetch('/api/browse_folder');
+                const data = await res.json();
+                if (data.success && data.path) {
+                    document.getElementById('outDir').value = data.path;
+                }
+            } catch (e) {
+                console.error("浏览文件夹出错:", e);
+            }
+        }
+
+        function showExportModal() {
+            const srcPath = document.getElementById('srcPath').value.trim();
+            const targetPath = document.getElementById('targetPath').value.trim();
+            if (!srcPath || !targetPath) {
+                alert("请先填写或上传源视频与目标视频！");
+                return;
+            }
+            document.getElementById('exportModalOverlay').style.display = 'flex';
+        }
+
+        function hideExportModal() {
+            document.getElementById('exportModalOverlay').style.display = 'none';
+        }
+
+        async function startExport() {
+            hideExportModal();
+            const srcPath = document.getElementById('srcPath').value.trim();
+            const targetPath = document.getElementById('targetPath').value.trim();
+
+            let outPath = "";
+            const outDir = document.getElementById('outDir').value.trim();
+            const outFileName = document.getElementById('outFileName').value.trim() || 'edited_video.mp4';
+            if (outDir) {
+                outPath = outDir + '/' + outFileName;
+                localStorage.setItem('lastOutDir', outDir);
+            }
+
+            const payload = {
+                src_path: srcPath,
+                src_start: srcVals.start,
+                duration: srcVals.end - srcVals.start,
+                target_path: targetPath,
+                replace_mode: document.getElementById('replaceMode').value,
+                target_start: targetStartVal,
+                target_end: -1,
+                out_path: outPath,
+                creation_time: document.getElementById('creationTime').value.trim()
+            };
+
+            showLoading("正在导出并修饰视频时间...");
+            try {
+                const res = await fetch('/api/process', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                hideLoading();
+                if (data.success) {
+                    alert(`🎉 导出成功！\n保存文件: ${data.out_path}\n${data.time_modified ? '创建时间已成功更新！' : ''}`);
+                } else alert("导出失败: " + data.error);
+            } catch (err) { hideLoading(); alert("网络错误或系统异常: " + err.message); }
+        }
+
+        async function generatePreview() {
+            hideExportModal();
+            const srcPath = document.getElementById('srcPath').value.trim();
+            const targetPath = document.getElementById('targetPath').value.trim();
+
+            const payload = {
+                src_path: srcPath,
+                src_start: srcVals.start,
+                duration: srcVals.end - srcVals.start,
+                target_path: targetPath,
+                replace_mode: document.getElementById('replaceMode').value,
+                target_start: targetStartVal,
+                target_end: -1,
+                is_preview: true
+            };
+
+            showLoading("正在高速合成预览视频...");
+            try {
+                const res = await fetch('/api/process', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                hideLoading();
+                if (data.success) {
+                    const videoEl = document.getElementById('previewVideo');
+                    videoEl.src = `/api/stream?path=${encodeURIComponent(data.out_path)}&t=${new Date().getTime()}`;
+                    document.getElementById('previewModalOverlay').style.display = 'flex';
+                } else {
+                    alert("预览生成失败: " + data.error);
+                    showExportModal();
+                }
+            } catch (err) { 
+                hideLoading(); 
+                alert("网络错误或系统异常: " + err.message); 
+                showExportModal();
+            }
+        }
+
+        function closePreviewModal() {
+            document.getElementById('previewModalOverlay').style.display = 'none';
+            const videoEl = document.getElementById('previewVideo');
+            videoEl.pause();
+            videoEl.src = "";
+        }
+
+        async function modifyTimeOnly() {
+            const filepath = document.getElementById('timeOnlyPath').value.trim();
+            const creation_time = document.getElementById('timeOnlyVal').value.trim();
+            const overwrite = document.getElementById('timeOnlyOverwrite').checked;
+            
+            if (!filepath) { alert("请选择或上传需要修改时间的视频文件！"); return; }
+            if (!creation_time) { alert("请填写目标创建时间！"); return; }
+            
+            showLoading("正在修改视频时间属性...");
+            try {
+                const res = await fetch('/api/modify_time_only', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filepath, creation_time, overwrite })
+                });
+                const data = await res.json();
+                hideLoading();
+                if (data.success) {
+                    alert(`✅ 时间修改成功！\n已保存至: ${data.out_path}`);
+                } else {
+                    alert("修改失败: " + data.error);
+                }
+            } catch (err) { hideLoading(); alert("网络错误或系统异常: " + err.message); }
+        }
+
+        function showLoading(msg) { document.getElementById('loadingText').innerText = msg; document.getElementById('loadingOverlay').style.display = 'flex'; }
+        
+        async function exportMp3() {
+            const srcPath = document.getElementById('mp3ExtractPath').value.trim();
+            if (!srcPath) { alert("请先上传待提取音频的源视频！"); return; }
+            
+            showLoading("正在高速提取 MP3...");
+            try {
+                const res = await fetch('/api/export_mp3', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        src_path: srcPath,
+                        src_start: mp3ExtractVals.start,
+                        duration: mp3ExtractVals.end - mp3ExtractVals.start,
+                        is_preview: false
+                    })
+                });
+                const data = await res.json();
+                hideLoading();
+                if (data.success) alert(`✅ MP3 导出成功！\n已保存至: ${data.out_path}`);
+                else alert("导出失败: " + data.error);
+            } catch (err) { hideLoading(); alert("网络错误: " + err.message); }
+        }
+
+        async function previewMp3() {
+            const srcPath = document.getElementById('mp3ExtractPath').value.trim();
+            if (!srcPath) { alert("请先上传待提取音频的源视频！"); return; }
+            
+            showLoading("生成 MP3 预览...");
+            try {
+                const res = await fetch('/api/export_mp3', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        src_path: srcPath,
+                        src_start: mp3ExtractVals.start,
+                        duration: mp3ExtractVals.end - mp3ExtractVals.start,
+                        is_preview: true
+                    })
+                });
+                const data = await res.json();
+                hideLoading();
+                if (data.success) {
+                    const audio = new Audio(`/api/stream?path=${encodeURIComponent(data.out_path)}&t=${new Date().getTime()}`);
+                    audio.play();
+                    alert("✅ 正在播放预览音频...");
+                } else alert("预览生成失败: " + data.error);
+            } catch (err) { hideLoading(); alert("网络错误: " + err.message); }
+        }
+
+        async function startExportFromMp3() {
+            const srcPath = document.getElementById('mp3ImportPath').value.trim();
+            const targetPath = document.getElementById('mp3TargetPath').value.trim();
+            if (!srcPath || !targetPath) { alert("请先填写 MP3 与目标视频路径！"); return; }
+            
+            showLoading("正在合并 MP3 与视频...");
+            try {
+                const res = await fetch('/api/process', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        src_path: srcPath,
+                        src_start: 0,
+                        duration: 0, 
+                        target_path: targetPath,
+                        replace_mode: 'segment',
+                        target_start: mp3TargetStartVal,
+                        is_preview: false
+                    })
+                });
+                const data = await res.json();
+                hideLoading();
+                if (data.success) alert(`✅ 视频合成成功！\n已保存至: ${data.out_path}`);
+                else alert("合成失败: " + data.error);
+            } catch (err) { hideLoading(); alert("网络错误: " + err.message); }
+        }
+        function hideLoading() { document.getElementById('loadingOverlay').style.display = 'none'; }
+        
+        // Setup initial time and load cache
+        window.onload = () => {
+            setNowTime();
+            setNowTimeOnly();
+            const lastOutDir = localStorage.getItem('lastOutDir');
+            if (lastOutDir) document.getElementById('outDir').value = lastOutDir;
+        };
+    </script>
+</body>
+</html>
