@@ -19,12 +19,10 @@ elif command -v yum &> /dev/null; then
     sudo yum install -y epel-release || true
     sudo yum install -y git python3-pip
     if ! command -v ffmpeg &> /dev/null; then
-        echo "⏬ 正在下载 FFmpeg 静态版以兼容该系统..."
-        wget -q https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz || curl -sSO https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
-        tar xf ffmpeg-release-amd64-static.tar.xz
-        sudo mv ffmpeg-*-static/ffmpeg /usr/local/bin/
-        sudo mv ffmpeg-*-static/ffprobe /usr/local/bin/
-        rm -rf ffmpeg-*
+        echo "⏬ 正在通过国内加速节点下载 FFmpeg 静态免安装版..."
+        wget -qO /usr/local/bin/ffmpeg https://mirror.ghproxy.com/https://github.com/eugeneware/ffmpeg-static/releases/download/b4.4/linux-x64
+        wget -qO /usr/local/bin/ffprobe https://mirror.ghproxy.com/https://github.com/eugeneware/ffprobe-static/releases/download/b4.4/linux-x64
+        chmod +x /usr/local/bin/ffmpeg /usr/local/bin/ffprobe
     fi
 else
     echo "❌ 无法识别的操作系统包管理器，请手动安装 ffmpeg, git, python3-pip"
