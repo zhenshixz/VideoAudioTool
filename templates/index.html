@@ -25,7 +25,7 @@
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: var(--bg-primary); color: var(--text-primary); min-height: 100vh; display: flex; flex-direction: column; }
+        body { overflow-x: hidden; font-family: 'Inter', system-ui, -apple-system, sans-serif; background-color: var(--bg-primary); color: var(--text-primary); min-height: 100vh; display: flex; flex-direction: column; }
         header { background-color: var(--bg-card); border-bottom: 1px solid var(--border-color); padding: 1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 1px 2px rgba(0,0,0,0.03); }
         .brand { display: flex; align-items: center; gap: 0.75rem; }
         .brand-icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--primary), #4f46e5); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 1.2rem; }
@@ -69,7 +69,7 @@
         .full-width-card { grid-column: 1 / -1; }
         .timeline-container { background: #ffffff; border: 1px solid var(--border-color); border-radius: 8px; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; }
         .timeline-header { display: flex; justify-content: space-between; align-items: center; }
-        .timeline-track-wrapper { position: relative; background-color: #f1f5f9; border: 1px solid var(--border-color); border-radius: 8px; height: 100px; overflow: hidden; display: flex; flex-direction: column; justify-content: space-around; padding: 0.5rem; }
+        .timeline-track-wrapper { position: relative; background-color: #f1f5f9; border: 1px solid var(--border-color); border-radius: 8px; height: 100px; overflow: hidden; display: flex; flex-direction: column; justify-around: space-around; padding: 0.5rem; }
         .track { height: 36px; border-radius: 6px; position: relative; display: flex; align-items: center; padding: 0 0.5rem; font-size: 0.75rem; font-weight: 600; }
         .track-video { background-color: #cbd5e1; color: #334155; width: 100%; }
         .track-audio-clip { position: absolute; height: 36px; background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; box-shadow: 0 2px 4px rgba(37,99,235,0.2); transition: left 0.1s ease, width 0.1s ease; }
@@ -92,6 +92,53 @@
         .modal { background: white; padding: 2rem; border-radius: var(--radius); box-shadow: var(--shadow-lg); width: 400px; text-align: center; display: flex; flex-direction: column; gap: 1rem; }
         .spinner { width: 40px; height: 40px; border: 4px solid var(--border-color); border-top-color: var(--primary); border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto; }
         @keyframes spin { to { transform: rotate(360deg); } }
+    
+        /* Responsive Media Queries for Tablets and Mobile Devices */
+        @media (max-width: 991px) {
+            .grid-2 { grid-template-columns: 1fr; gap: 1rem; }
+            .app-container { padding: 1rem; }
+            .video-container { height: 200px; }
+        }
+
+        @media (max-width: 767px) {
+            header { 
+                padding: 0.75rem 1rem; 
+                flex-direction: column; 
+                gap: 0.75rem; 
+                align-items: stretch; 
+            }
+            .brand { justify-content: center; }
+            .header-actions { justify-content: center; width: 100%; }
+            .module-tabs { 
+                overflow-x: auto; 
+                flex-wrap: nowrap; 
+                padding-bottom: 0.5rem; 
+                -webkit-overflow-scrolling: touch; 
+                scrollbar-width: none;
+            }
+            .module-tabs::-webkit-scrollbar { display: none; }
+            .tab-btn { 
+                flex: 0 0 auto; 
+                min-width: 200px; 
+                padding: 0.75rem 1rem; 
+            }
+            input[type="text"], select, .btn { 
+                min-height: 44px; 
+            }
+            .file-input-group { 
+                flex-direction: column; 
+            }
+            .modal { 
+                width: 92vw !important; 
+                padding: 1.25rem !important; 
+            }
+        
+            .time-display { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+            .time-display span { line-height: 1.4; }
+            /* Button groups wrap */
+            div[style*="display: flex; gap: 1rem;"] { flex-wrap: wrap; }
+            div[style*="display: flex; gap: 0.5rem;"] { flex-wrap: wrap; }
+        }
     </style>
 </head>
 <body>
@@ -104,6 +151,7 @@
             </div>
         </div>
         <div class="header-actions">
+            <button class="btn btn-secondary" id="headerOpenBtn" onclick="openTargetLocation('audio')" title="打开当前操作的目录">📂 目录</button>
             <button class="btn btn-success" id="headerExportBtn" onclick="showExportModal()">导出视频</button>
         </div>
     </header>
@@ -132,8 +180,68 @@
                     <span class="tab-sub">单独导出MP3，或将MP3混入目标视频局部保留原声</span>
                 </div>
             </button>
+            <button class="tab-btn" id="tabVolumeBtn" onclick="switchTab('volume')">
+                <span class="tab-icon">🔊</span>
+                <div class="tab-text">
+                    <span class="tab-title">扩大视频音量</span>
+                    <span class="tab-sub">一键扩大手机视频原本录制声音过小的问题</span>
+                </div>
+            </button>
         </div>
 
+
+        <!-- 视频音量增大 -->
+        <div class="module-panel grid-2" id="panelVolume">
+            <div class="card">
+                <div class="card-header">
+                    <div class="card-title">🔊 选择需要扩大音量的视频</div>
+                    <span class="badge badge-blue">原视频</span>
+                </div>
+                <div class="file-input-group">
+                    <input type="text" id="volSrcPath" placeholder="输入视频本地路径，或点击上传..." onchange="loadVideoInfo('volSrc')">
+                    <button class="btn btn-secondary" onclick="triggerUpload('volSrc')">浏览/上传</button>
+                    <input type="file" id="volSrcFileInput" style="display: none;" onchange="handleFileUpload('volSrc')">
+                </div>
+                <div class="video-container" style="height: 280px;">
+                    <video id="volSrcVideo" controls style="display: none;"></video>
+                    <div class="video-placeholder" id="volSrcPlaceholder">预览待处理的视频</div>
+                </div>
+            </div>
+
+            <div class="card" style="justify-content: space-between;">
+                <div>
+                    <div class="card-header" style="margin-bottom: 1rem;">
+                        <div class="card-title" style="color: var(--primary);">🔊 调节音量参数</div>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                        <div class="time-input-box">
+                            <label style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 600;">
+                                <span>1. 拖动调节音量增益 (分贝)</span>
+                                <span id="volDbText" style="color: var(--danger);">+10 dB (增大)</span>
+                            </label>
+                            <input type="range" id="volDbSlider" min="-20" max="30" step="1" value="10" style="width: 100%; margin-top: 0.5rem; cursor: pointer;" oninput="onVolDbChange()">
+                        </div>
+                        <div class="time-input-box">
+                            <label style="font-size: 0.85rem; font-weight: 600;">2. 导出保存位置 (留空则保存在原视频目录下)</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input type="text" id="volOutDir" placeholder="点击右侧浏览选择文件夹...">
+                                <button class="btn btn-secondary" onclick="browseFolderForVol()">浏览...</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                    <button class="btn btn-secondary" onclick="boostVolume(true)" style="flex: 1; padding: 0.8rem; font-size: 1rem; font-weight: 600;">
+                        👀 预览前10秒效果
+                    </button>
+                    <button class="btn btn-primary" onclick="boostVolume(false)" style="flex: 1; padding: 0.8rem; font-size: 1rem; font-weight: 600;">
+                        ⚡ 一键导出视频
+                    </button>
+                    <button class="btn btn-secondary" onclick="openTargetLocation('volume')" title="打开文件目录">📂</button>
+                </div>
+            </div>
+        </div>
         <!-- 视频音轨替换 -->
         <div class="module-panel grid-2 active" id="panelAudioTrack">
             <!-- 左侧：源视频 -->
@@ -145,7 +253,7 @@
                 <div class="file-input-group">
                     <input type="text" id="srcPath" placeholder="输入源视频本地路径，或点击上传..." onchange="loadVideoInfo('src')">
                     <button class="btn btn-secondary" onclick="triggerUpload('src')">浏览/上传</button>
-                    <input type="file" id="srcFileInput" style="display: none;" accept="video/*" onchange="handleFileUpload('src')">
+                    <input type="file" id="srcFileInput" style="display: none;" onchange="handleFileUpload('src')">
                 </div>
                 <div class="video-container">
                     <video id="srcVideo" controls></video>
@@ -174,7 +282,7 @@
                 <div class="file-input-group">
                     <input type="text" id="targetPath" placeholder="输入目标视频本地路径，或点击上传..." onchange="loadVideoInfo('target')">
                     <button class="btn btn-secondary" onclick="triggerUpload('target')">浏览/上传</button>
-                    <input type="file" id="targetFileInput" style="display: none;" accept="video/*" onchange="handleFileUpload('target')">
+                    <input type="file" id="targetFileInput" style="display: none;" onchange="handleFileUpload('target')">
                 </div>
                 <div class="video-container">
                     <video id="targetVideo" controls></video>
@@ -230,7 +338,7 @@
                             <div class="file-input-group">
                                 <input type="text" id="timeOnlyPath" placeholder="输入视频绝对路径，或点击上传..." onchange="loadVideoInfo('timeOnly')">
                                 <button class="btn btn-secondary" onclick="triggerUpload('timeOnly')">浏览/上传</button>
-                                <input type="file" id="timeOnlyFileInput" style="display: none;" accept="video/*" onchange="handleFileUpload('timeOnly')">
+                                <input type="file" id="timeOnlyFileInput" style="display: none;" onchange="handleFileUpload('timeOnly')">
                             </div>
                         </div>
 
@@ -252,9 +360,12 @@
                 </div>
 
                 <div style="padding-top: 1rem; border-top: 1px solid var(--border-color);">
-                    <button class="btn btn-primary" onclick="modifyTimeOnly()" style="width: 100%; padding: 0.8rem; font-size: 1rem; font-weight: 600;">
-                        ⚡ 一键修改创建时间
-                    </button>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-secondary" onclick="openTargetLocation('time')" title="打开文件目录">📂</button>
+                        <button class="btn btn-primary" onclick="modifyTimeOnly()" style="flex: 1; padding: 0.8rem; font-size: 1rem; font-weight: 600;">
+                            ⚡ 一键修改创建时间
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -270,7 +381,7 @@
                 <div class="file-input-group">
                     <input type="text" id="mp3ExtractPath" placeholder="输入源视频本地路径..." onchange="loadVideoInfo('mp3Extract')">
                     <button class="btn btn-secondary" onclick="triggerUpload('mp3Extract')">浏览/上传</button>
-                    <input type="file" id="mp3ExtractFileInput" style="display: none;" accept="video/*" onchange="handleFileUpload('mp3Extract')">
+                    <input type="file" id="mp3ExtractFileInput" style="display: none;" onchange="handleFileUpload('mp3Extract')">
                 </div>
                 <div class="video-container" style="height: 160px;">
                     <video id="mp3ExtractVideo" controls style="display: none;"></video>
@@ -291,6 +402,7 @@
                 <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
                     <button class="btn btn-secondary" style="flex: 1;" onclick="previewMp3()">🎧 预览这段音频</button>
                     <button class="btn btn-primary" style="flex: 1;" onclick="exportMp3()">💾 导出为 MP3</button>
+                    <button class="btn btn-secondary" onclick="openTargetLocation('mp3Extract')" title="打开文件目录">📂</button>
                 </div>
             </div>
 
@@ -303,12 +415,12 @@
                 <div class="file-input-group">
                     <input type="text" id="mp3ImportPath" placeholder="输入要导入的 MP3 文件路径..." onchange="loadVideoInfo('mp3Import')">
                     <button class="btn btn-secondary" onclick="triggerUpload('mp3Import')">上传 MP3</button>
-                    <input type="file" id="mp3ImportFileInput" style="display: none;" accept="audio/*" onchange="handleFileUpload('mp3Import')">
+                    <input type="file" id="mp3ImportFileInput" style="display: none;" onchange="handleFileUpload('mp3Import')">
                 </div>
                 <div class="file-input-group" style="margin-top: 0.5rem;">
                     <input type="text" id="mp3TargetPath" placeholder="输入目标视频路径..." onchange="loadVideoInfo('mp3Target')">
                     <button class="btn btn-secondary" onclick="triggerUpload('mp3Target')">上传目标视频</button>
-                    <input type="file" id="mp3TargetFileInput" style="display: none;" accept="video/*" onchange="handleFileUpload('mp3Target')">
+                    <input type="file" id="mp3TargetFileInput" style="display: none;" onchange="handleFileUpload('mp3Target')">
                 </div>
                 <div class="video-container" style="height: 160px; margin-top: 0.5rem;">
                     <video id="mp3TargetVideo" controls style="display: none;"></video>
@@ -324,7 +436,8 @@
                     </div>
                 </div>
                 <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
-                    <button class="btn btn-success" style="width: 100%;" onclick="startExportFromMp3()">🚀 预览与导出 (带导入的 MP3)</button>
+                    <button class="btn btn-success" style="flex: 1;" onclick="startExportFromMp3()">🚀 预览与导出 (带导入的 MP3)</button>
+                    <button class="btn btn-secondary" onclick="openTargetLocation('mp3Target')" title="打开文件目录">📂</button>
                 </div>
             </div>
         </div>
@@ -376,7 +489,7 @@
             </div>
             <div style="text-align: right; margin-top: 1rem; display: flex; justify-content: flex-end; gap: 1rem;">
                 <button class="btn btn-secondary" onclick="closePreviewModal()">还需要修改</button>
-                <button class="btn btn-success" onclick="closePreviewModal(); startExport()">效果完美，立刻导出！</button>
+                <button class="btn btn-success" onclick="handlePreviewExport()">效果完美，立刻导出！</button>
             </div>
         </div>
     </div>
@@ -408,16 +521,19 @@
                 const startDrag = (e, thumb) => {
                     this.isDragging = true;
                     this.activeThumb = thumb;
-                    e.preventDefault();
+                    if (e.cancelable) e.preventDefault();
                 };
                 
                 this.thumbLeft.addEventListener('mousedown', (e) => startDrag(e, 'left'));
                 this.thumbRight.addEventListener('mousedown', (e) => startDrag(e, 'right'));
                 
-                document.addEventListener('mousemove', (e) => {
+                this.thumbLeft.addEventListener('touchstart', (e) => startDrag(e, 'left'), { passive: false });
+                this.thumbRight.addEventListener('touchstart', (e) => startDrag(e, 'right'), { passive: false });
+                
+                const handleMove = (clientX) => {
                     if (!this.isDragging) return;
                     const rect = this.track.getBoundingClientRect();
-                    let pos = (e.clientX - rect.left) / rect.width;
+                    let pos = (clientX - rect.left) / rect.width;
                     pos = Math.max(0, Math.min(1, pos));
                     let val = this.min + pos * (this.max - this.min);
                     
@@ -428,9 +544,20 @@
                     }
                     this.updateUI();
                     if (this.onUpdate) this.onUpdate(this.val1, this.val2, this.activeThumb);
-                });
+                };
+
+                document.addEventListener('mousemove', (e) => handleMove(e.clientX));
+                document.addEventListener('touchmove', (e) => {
+                    if (!this.isDragging) return;
+                    if (e.touches && e.touches.length > 0) {
+                        handleMove(e.touches[0].clientX);
+                        if (e.cancelable) e.preventDefault();
+                    }
+                }, { passive: false });
                 
                 document.addEventListener('mouseup', () => { this.isDragging = false; this.activeThumb = null; });
+                document.addEventListener('touchend', () => { this.isDragging = false; this.activeThumb = null; });
+                document.addEventListener('touchcancel', () => { this.isDragging = false; this.activeThumb = null; });
             }
             
             init(min, max) {
@@ -534,14 +661,18 @@
         function switchTab(tab) {
             document.getElementById('tabAudioBtn').classList.toggle('active', tab === 'audio');
             document.getElementById('tabTimeBtn').classList.toggle('active', tab === 'time');
-            document.getElementById('tabMp3Btn').classList.toggle('active', tab === 'mp3');
+                        document.getElementById('tabMp3Btn').classList.toggle('active', tab === 'mp3');
+            document.getElementById('tabVolumeBtn').classList.toggle('active', tab === 'volume');
             
             document.getElementById('panelAudioTrack').classList.toggle('active', tab === 'audio');
             document.getElementById('panelTimeEdit').classList.toggle('active', tab === 'time');
-            document.getElementById('panelMp3').classList.toggle('active', tab === 'mp3');
+                        document.getElementById('panelMp3').classList.toggle('active', tab === 'mp3');
+            document.getElementById('panelVolume').classList.toggle('active', tab === 'volume');
             
             const exportBtn = document.getElementById('headerExportBtn');
             if (exportBtn) exportBtn.style.display = (tab === 'audio' ? 'inline-flex' : 'none');
+            const openBtn = document.getElementById('headerOpenBtn');
+            if (openBtn) openBtn.style.display = (tab === 'audio' ? 'inline-flex' : 'none');
         }
 
         function setVideoSource(type, path, info) {
@@ -577,6 +708,10 @@
                 startEl.value = 0;
                 mp3TargetStartVal = 0;
                 document.getElementById('mp3TargetTimeText').innerText = `插入起点: 00:00.0`;
+            } else if (type === 'volSrc') {
+                if (info && info.creation_time) {
+                    // do nothing specifically
+                }
             } else if (type === 'timeOnly') {
                 if (info && info.creation_time) {
                     document.getElementById('timeOnlyVal').value = info.creation_time;
@@ -611,7 +746,33 @@
             document.getElementById('timeOnlyVal').value = `${y}-${m}-${d} ${h}:${min}:${s}`;
         }
 
+        
+        async function isRemote() {
+            return window.location.hostname !== '127.0.0.1' && window.location.hostname !== 'localhost';
+        }
+
+        async function browseFolderForVol() {
+            if (isRemote()) {
+                alert("手机端提示：无法调用电脑的文件夹选择器。\n\n请直接留空，处理完成后会自动弹出【下载到手机】的提示。");
+                return;
+            }
+            try {
+                const res = await fetch('/api/browse_folder');
+                const data = await res.json();
+                if (data.success && data.path) {
+                    document.getElementById('volOutDir').value = data.path;
+                    localStorage.setItem('lastOutDir', data.path);
+                }
+            } catch (e) {
+                console.error("浏览文件夹出错:", e);
+            }
+        }
+
         async function browseFolder() {
+            if (isRemote()) {
+                alert("手机端提示：无法调用电脑的文件夹选择器。\n\n请直接留空，处理完成后会自动弹出【下载到手机】的提示。");
+                return;
+            }
             try {
                 const res = await fetch('/api/browse_folder');
                 const data = await res.json();
@@ -671,12 +832,15 @@
                 const data = await res.json();
                 hideLoading();
                 if (data.success) {
-                    alert(`🎉 导出成功！\n保存文件: ${data.out_path}\n${data.time_modified ? '创建时间已成功更新！' : ''}`);
+                    if (isRemote() ? `✨ 处理成功！\n\n是否立刻将文件下载到手机？` : `🎉 导出成功！\n保存文件: ${data.out_path}\n${data.time_modified ? '创建时间已成功更新！' : ''}\n\n是否立即下载该文件到设备？(PC端也可取消后点击📂打开目录)`) {
+                        window.open('/api/download?path=' + encodeURIComponent(data.out_path));
+                    }
                 } else alert("导出失败: " + data.error);
             } catch (err) { hideLoading(); alert("网络错误或系统异常: " + err.message); }
         }
 
         async function generatePreview() {
+            currentPreviewContext = 'audio';
             hideExportModal();
             const srcPath = document.getElementById('srcPath').value.trim();
             const targetPath = document.getElementById('targetPath').value.trim();
@@ -715,6 +879,17 @@
             }
         }
 
+        
+        let currentPreviewContext = 'audio';
+        function handlePreviewExport() {
+            closePreviewModal();
+            if (currentPreviewContext === 'volume') {
+                boostVolume(false);
+            } else {
+                startExport();
+            }
+        }
+
         function closePreviewModal() {
             document.getElementById('previewModalOverlay').style.display = 'none';
             const videoEl = document.getElementById('previewVideo');
@@ -739,11 +914,94 @@
                 const data = await res.json();
                 hideLoading();
                 if (data.success) {
-                    alert(`✅ 时间修改成功！\n已保存至: ${data.out_path}`);
+                    if (isRemote() ? `✨ 处理成功！\n\n是否立刻将文件下载到手机？` : `✅ 时间修改成功！\n已保存至: ${data.out_path}\n\n是否立即下载该文件到设备？(PC端也可取消后点击📂打开目录)`) {
+                        window.open('/api/download?path=' + encodeURIComponent(data.out_path));
+                    }
                 } else {
                     alert("修改失败: " + data.error);
                 }
             } catch (err) { hideLoading(); alert("网络错误或系统异常: " + err.message); }
+        }
+
+        
+                function onVolDbChange() {
+            const val = parseInt(document.getElementById('volDbSlider').value);
+            const textEl = document.getElementById('volDbText');
+            if (val > 0) {
+                textEl.innerText = `+${val} dB (增大)`;
+                textEl.style.color = 'var(--danger)';
+            } else if (val < 0) {
+                textEl.innerText = `${val} dB (减小)`;
+                textEl.style.color = 'var(--warning)';
+            } else {
+                textEl.innerText = `0 dB (原音量)`;
+                textEl.style.color = 'var(--primary)';
+            }
+        }
+
+        async function boostVolume(isPreview = false) {
+            const filepath = document.getElementById('volSrcPath').value.trim();
+            const volDb = parseFloat(document.getElementById('volDbSlider').value) || 0.0;
+            let outPath = "";
+            const outDir = document.getElementById('volOutDir').value.trim();
+            if (outDir) {
+                const filename = filepath.split(/[\\/]/).pop();
+                const match = filename.match(/(.*)(\.[^.]+)$/);
+                const base = match ? match[1] : filename;
+                const ext = match ? match[2] : '';
+                outPath = outDir + '/' + base + '_boosted' + ext;
+                localStorage.setItem('lastOutDir', outDir);
+            }
+            
+            if (!filepath) { alert("请选择或上传需要扩大音量的视频文件！"); return; }
+            
+            showLoading(isPreview ? "正在为您生成前10秒的极速预览，请稍候..." : "正在扩大全量视频音量，这可能需要一会儿...");
+            try {
+                const res = await fetch('/api/boost_volume', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ src_path: filepath, volume_db: volDb, out_path: outPath, is_preview: isPreview })
+                });
+                const data = await res.json();
+                hideLoading();
+                if (data.success) {
+                    if (isPreview) {
+                        currentPreviewContext = 'volume';
+                        const videoEl = document.getElementById('previewVideo');
+                        videoEl.src = `/api/stream?path=${encodeURIComponent(data.out_path)}&t=${new Date().getTime()}`;
+                        document.getElementById('previewModalOverlay').style.display = 'flex';
+                    } else {
+                        if (isRemote() ? `✨ 处理成功！\n\n是否立刻将文件下载到手机？` : `✅ 扩大音量成功！\n保留了原始创建时间。\n已保存至: ${data.out_path}\n\n是否立即下载该文件到设备？(PC端也可取消后点击📂打开目录)`) {
+                            window.open('/api/download?path=' + encodeURIComponent(data.out_path));
+                        }
+                    }
+                } else {
+                    alert("处理失败: " + data.error);
+                }
+            } catch (err) { hideLoading(); alert("网络错误或系统异常: " + err.message); }
+        }
+
+        
+        function openTargetLocation(moduleId) {
+            let path = "";
+            if (moduleId === 'time') path = document.getElementById('timeOnlyPath').value.trim();
+            else if (moduleId === 'audio') path = document.getElementById('outDir').value.trim() || document.getElementById('targetPath').value.trim();
+            else if (moduleId === 'mp3Extract') path = document.getElementById('mp3ExtractPath').value.trim();
+            else if (moduleId === 'mp3Target') path = document.getElementById('mp3TargetPath').value.trim();
+            else if (moduleId === 'volume') path = document.getElementById('volOutDir').value.trim() || document.getElementById('volSrcPath').value.trim();
+            
+            if (!path) path = localStorage.getItem('lastOutDir') || "";
+            
+            if (!path) {
+                alert("目前没有可打开的路径，请先上传文件或设置输出目录。");
+                return;
+            }
+            
+            fetch('/api/open_location', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filepath: path })
+            }).then(res => res.json()).then(data => {
+                if (!data.success) alert("打开失败: " + data.error);
+            });
         }
 
         function showLoading(msg) { document.getElementById('loadingText').innerText = msg; document.getElementById('loadingOverlay').style.display = 'flex'; }
@@ -765,7 +1023,11 @@
                 });
                 const data = await res.json();
                 hideLoading();
-                if (data.success) alert(`✅ MP3 导出成功！\n已保存至: ${data.out_path}`);
+                if (data.success) {
+                    if (isRemote() ? `✨ 处理成功！\n\n是否立刻将文件下载到手机？` : `✅ MP3 导出成功！\n已保存至: ${data.out_path}\n\n是否立即下载该文件到设备？(PC端也可取消后点击📂打开目录)`) {
+                        window.open('/api/download?path=' + encodeURIComponent(data.out_path));
+                    }
+                }
                 else alert("导出失败: " + data.error);
             } catch (err) { hideLoading(); alert("网络错误: " + err.message); }
         }
@@ -829,6 +1091,18 @@
             const lastOutDir = localStorage.getItem('lastOutDir');
             if (lastOutDir) document.getElementById('outDir').value = lastOutDir;
         };
-    </script>
+    
+        document.addEventListener('DOMContentLoaded', () => {
+            const lastDir = localStorage.getItem('lastOutDir');
+            if (lastDir) {
+                const dirInputs = ['outDir', 'volOutDir'];
+                dirInputs.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.value = lastDir;
+                });
+            }
+        });
+
+</script>
 </body>
 </html>

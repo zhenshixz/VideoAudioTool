@@ -1,0 +1,15 @@
+if (confirm(`🎉 导出成功！\n保存文件: ${data.out_path}\n${data.time_modified ? '创建时间已成功更新！' : ''}\n\n是否立即下载该文件到设备？(PC端也可取消后点击📂打开目录)`)) {
+                        window.open('/api/download?path=' + encodeURIComponent(data.out_path));
+                    }
+---
+if (confirm(`✅ 时间修改成功！\n已保存至: ${data.out_path}\n\n是否立即下载该文件到设备？(PC端也可取消后点击📂打开目录)`)) {
+                        window.open('/api/download?path=' + encodeURIComponent(data.out_path));
+                    }
+---
+if (confirm(`✅ 扩大音量成功！\n保留了原始创建时间。\n已保存至: ${data.out_path}\n\n是否立即下载该文件到设备？(PC端也可取消后点击📂打开目录)`)) {
+                            window.open('/api/download?path=' + encodeURIComponent(data.out_path));
+                        }
+---
+if (confirm(`✅ MP3 导出成功！\n已保存至: ${data.out_path}\n\n是否立即下载该文件到设备？(PC端也可取消后点击📂打开目录)`)) {
+                        window.open('/api/download?path=' + encodeURIComponent(data.out_path));
+                    }

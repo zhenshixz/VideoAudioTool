@@ -92,7 +92,7 @@ def stream_file():
     filepath = request.args.get('path', '').strip().strip('"').strip("'")
     if os.path.exists(filepath):
         return send_file(filepath, conditional=True)
-    return "File not found", 404
+    return f"File not found: {filepath}", 404
 
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
@@ -200,7 +200,7 @@ def process_video():
     is_preview = data.get('is_preview', False)
     
     if not os.path.exists(src_path):
-        return jsonify({"success": False, "error": "源视频文件不存在"}), 400
+        return jsonify({"success": False, "error": f"源视频文件不存在: [{src_path}]"}), 400
     if not os.path.exists(target_path):
         return jsonify({"success": False, "error": "目标视频文件不存在"}), 400
         
@@ -278,6 +278,89 @@ def process_video():
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
+
+@app.route('/api/boost_volume', methods=['POST'])
+def boost_volume():
+    data = request.json or {}
+    src_path = data.get('src_path', '').strip().strip('"').strip("'")
+    volume_db = float(data.get('volume_db', 0.0))
+    out_path = data.get('out_path', '').strip().strip('"').strip("'")
+    is_preview = data.get('is_preview', False)
+    
+    if not os.path.exists(src_path):
+        return jsonify({"success": False, "error": f"源视频文件不存在: [{src_path}]"}), 400
+        
+    if is_preview:
+        out_path = os.path.join(tempfile.gettempdir(), "video_tool_vol_preview.mp4")
+    elif not out_path:
+        out_dir = os.path.dirname(src_path) or os.getcwd()
+        base, ext = os.path.splitext(os.path.basename(src_path))
+        out_path = os.path.join(out_dir, f"{base}_boosted{ext}")
+
+    temp_dir = tempfile.mkdtemp(prefix="video_tool_vol_")
+    try:
+        temp_out = os.path.join(temp_dir, "temp_out" + os.path.splitext(src_path)[1])
+        cmd = ["ffmpeg", "-y", "-i", src_path]
+        
+        if is_preview:
+            cmd.extend(["-t", "10"])
+            
+        cmd.extend([
+            "-c:v", "copy",
+            "-af", f"volume={volume_db}dB,alimiter=limit=0.99",
+            "-c:a", "aac", "-b:a", "192k",
+            temp_out
+        ])
+        
+        run_cmd(cmd)
+        shutil.copy2(temp_out, out_path)
+        
+        if not is_preview:
+            orig_info = get_video_info(src_path)
+            if orig_info and orig_info.get('creation_time'):
+                modify_creation_time(out_path, orig_info['creation_time'])
+            
+        return jsonify({"success": True, "out_path": out_path, "is_preview": is_preview})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+
+
+@app.route('/api/open_location', methods=['POST'])
+def open_location():
+    data = request.json or {}
+    filepath = data.get('filepath', '').strip().strip('"').strip("'")
+    
+    if not filepath:
+        return jsonify({"success": False, "error": "路径为空"}), 400
+        
+    try:
+        # Windows explorer 要求严格的反斜杠规范
+        filepath = os.path.normpath(filepath)
+        
+        if os.path.exists(filepath):
+            if os.path.isdir(filepath):
+                subprocess.run(f'explorer "{filepath}"', shell=True)
+            else:
+                subprocess.run(f'explorer /select,"{filepath}"', shell=True)
+            return jsonify({"success": True})
+        else:
+            parent = os.path.dirname(filepath)
+            if os.path.exists(parent):
+                subprocess.run(f'explorer "{parent}"', shell=True)
+                return jsonify({"success": True})
+            return jsonify({"success": False, "error": "路径及其父目录均不存在"}), 400
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/download', methods=['GET'])
+def download_file():
+    filepath = request.args.get('path')
+    if not filepath or not os.path.exists(filepath):
+        return f"File not found: {filepath}", 404
+    return send_file(filepath, as_attachment=True)
 
 if __name__ == '__main__':
     print("启动 视频音频替换与时间修改 Web服务...")
