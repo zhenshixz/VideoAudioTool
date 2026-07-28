@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.log
+.env
+
+# Local scratch files
+debug_confirm.txt
+temp.js
+
+# Runtime media must never be committed
+data/
+uploads/
+previews/
+*.tmp

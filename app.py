@@ -3,15 +3,75 @@ import sys
 import subprocess
 import tempfile
 import shutil
-import tkinter as tk
-from tkinter import filedialog
+import uuid
+import time
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, send_file
+from werkzeug.utils import secure_filename
+
+if os.name == "nt":
+    import tkinter as tk
+    from tkinter import filedialog
+else:
+    tk = None
+    filedialog = None
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 
-UPLOAD_FOLDER = os.path.join(tempfile.gettempdir(), 'video_tool_uploads')
+SERVER_MODE = os.environ.get("VIDEO_TOOL_SERVER_MODE", "0") == "1"
+DATA_ROOT = os.path.abspath(
+    os.environ.get(
+        "VIDEO_TOOL_DATA_DIR",
+        os.path.join(tempfile.gettempdir(), "video_tool_data")
+    )
+)
+UPLOAD_FOLDER = os.path.join(DATA_ROOT, "uploads")
+PREVIEW_FOLDER = os.path.join(DATA_ROOT, "previews")
+MAX_UPLOAD_GB = int(os.environ.get("VIDEO_TOOL_MAX_UPLOAD_GB", "2"))
+app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_GB * 1024 * 1024 * 1024
+
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(PREVIEW_FOLDER, exist_ok=True)
+
+
+def is_path_allowed(filepath):
+    if not SERVER_MODE:
+        return True
+    try:
+        candidate = os.path.abspath(filepath)
+        return os.path.commonpath([candidate, DATA_ROOT]) == DATA_ROOT
+    except (TypeError, ValueError):
+        return False
+
+
+def require_existing_file(filepath):
+    return bool(filepath and is_path_allowed(filepath) and os.path.isfile(filepath))
+
+
+def make_preview_path(suffix):
+    return os.path.join(PREVIEW_FOLDER, f"{uuid.uuid4().hex}{suffix}")
+
+
+def cleanup_old_files(max_age_hours=24):
+    cutoff = time.time() - max_age_hours * 3600
+    for root, dirs, files in os.walk(DATA_ROOT, topdown=False):
+        for filename in files:
+            path = os.path.join(root, filename)
+            try:
+                if os.path.getmtime(path) < cutoff:
+                    os.remove(path)
+            except OSError:
+                pass
+        for dirname in dirs:
+            path = os.path.join(root, dirname)
+            try:
+                if not os.listdir(path):
+                    os.rmdir(path)
+            except OSError:
+                pass
+
+
+cleanup_old_files()
 
 def parse_time(time_str):
     if not time_str: return 0.0
@@ -22,7 +82,16 @@ def parse_time(time_str):
     return seconds
 
 def run_cmd(cmd):
-    subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    result = subprocess.run(
+        cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        text=True,
+        errors="replace"
+    )
+    if result.returncode != 0:
+        details = (result.stderr or "FFmpeg execution failed").strip()
+        raise RuntimeError(details[-2000:])
 
 def get_video_info(filepath):
     if not os.path.exists(filepath):
@@ -66,9 +135,10 @@ def modify_creation_time(filepath, time_str):
         dt = datetime.strptime(time_str, '%Y-%m-%d %H:%M:%S')
         ts = dt.timestamp()
         os.utime(filepath, (ts, ts))
-        safe_path = filepath.replace("'", "''")
-        ps_cmd = f"(Get-Item '{safe_path}').CreationTime = [datetime]::ParseExact('{time_str}', 'yyyy-MM-dd HH:mm:ss', $null)"
-        subprocess.run(["powershell", "-Command", ps_cmd], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if os.name == "nt":
+            safe_path = filepath.replace("'", "''")
+            ps_cmd = f"(Get-Item '{safe_path}').CreationTime = [datetime]::ParseExact('{time_str}', 'yyyy-MM-dd HH:mm:ss', $null)"
+            subprocess.run(["powershell", "-Command", ps_cmd], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return True
     except Exception as e:
         print(f"Failed to modify creation time: {e}")
@@ -78,10 +148,32 @@ def modify_creation_time(filepath, time_str):
 def index():
     return render_template('index.html')
 
+@app.route('/api/health')
+def health():
+    ffmpeg_ok = shutil.which("ffmpeg") is not None
+    ffprobe_ok = shutil.which("ffprobe") is not None
+    status = 200 if ffmpeg_ok and ffprobe_ok else 503
+    return jsonify({
+        "success": status == 200,
+        "server_mode": SERVER_MODE,
+        "ffmpeg": ffmpeg_ok,
+        "ffprobe": ffprobe_ok
+    }), status
+
+
+@app.errorhandler(413)
+def file_too_large(_error):
+    return jsonify({
+        "success": False,
+        "error": f"文件过大，单个文件不能超过 {MAX_UPLOAD_GB} GB。"
+    }), 413
+
 @app.route('/api/video_info', methods=['POST'])
 def video_info():
     data = request.json or {}
     filepath = data.get('filepath', '').strip().strip('"').strip("'")
+    if not require_existing_file(filepath):
+        return jsonify({"success": False, "error": "文件不存在或无权访问。"}), 400
     info = get_video_info(filepath)
     if info:
         return jsonify({"success": True, "info": info})
@@ -90,9 +182,9 @@ def video_info():
 @app.route('/api/stream')
 def stream_file():
     filepath = request.args.get('path', '').strip().strip('"').strip("'")
-    if os.path.exists(filepath):
+    if require_existing_file(filepath):
         return send_file(filepath, conditional=True)
-    return f"File not found: {filepath}", 404
+    return "File not found or access denied", 404
 
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
@@ -101,13 +193,26 @@ def upload_file():
     file = request.files['file']
     if file.filename == '':
         return jsonify({"success": False, "error": "未选择文件"}), 400
-    save_path = os.path.join(UPLOAD_FOLDER, file.filename)
+    safe_name = secure_filename(file.filename)
+    if not safe_name:
+        safe_name = f"upload_{uuid.uuid4().hex}.bin"
+    upload_dir = os.path.join(UPLOAD_FOLDER, uuid.uuid4().hex)
+    os.makedirs(upload_dir, exist_ok=True)
+    save_path = os.path.join(upload_dir, safe_name)
     file.save(save_path)
     info = get_video_info(save_path)
+    if not info:
+        shutil.rmtree(upload_dir, ignore_errors=True)
+        return jsonify({"success": False, "error": "上传的文件不是可解析的音视频文件。"}), 400
     return jsonify({"success": True, "filepath": save_path, "info": info})
 
 @app.route('/api/browse_folder', methods=['GET'])
 def browse_folder():
+    if SERVER_MODE or not tk or not filedialog:
+        return jsonify({
+            "success": False,
+            "error": "服务器模式不支持选择服务器目录，请上传文件后直接下载处理结果。"
+        }), 400
     try:
         root = tk.Tk()
         root.withdraw()
@@ -125,18 +230,22 @@ def modify_time_only():
     creation_time = data.get('creation_time', '').strip()
     overwrite = data.get('overwrite', False)
     
-    if not os.path.exists(filepath):
+    if not require_existing_file(filepath):
         return jsonify({"success": False, "error": "文件不存在"}), 400
         
     temp_dir = tempfile.mkdtemp(prefix="video_tool_time_")
     try:
-        temp_out = os.path.join(temp_dir, "temp.mp4")
+        source_ext = os.path.splitext(filepath)[1] or ".mp4"
+        temp_out = os.path.join(temp_dir, f"temp{source_ext}")
         cmd = ["ffmpeg", "-y", "-i", filepath, "-c", "copy"]
         if creation_time:
             cmd.extend(["-metadata", f"creation_time={creation_time}"])
         cmd.append(temp_out)
         run_cmd(cmd)
         
+        if SERVER_MODE:
+            overwrite = False
+
         if overwrite:
             final_out = filepath
         else:
@@ -162,14 +271,14 @@ def export_mp3():
     duration = float(data.get('duration', 0))
     is_preview = data.get('is_preview', False)
 
-    if not os.path.exists(src_path):
+    if not require_existing_file(src_path):
         return jsonify({"success": False, "error": "源文件不存在"}), 400
 
     out_path = data.get('out_path', '').strip().strip('"').strip("'")
     
     if is_preview:
-        out_path = os.path.join(tempfile.gettempdir(), "video_tool_preview.mp3")
-    elif not out_path:
+        out_path = make_preview_path(".mp3")
+    elif SERVER_MODE or not out_path:
         out_dir = os.path.dirname(src_path) or os.getcwd()
         base = os.path.splitext(os.path.basename(src_path))[0]
         out_path = os.path.join(out_dir, f"{base}_extracted.mp3")
@@ -199,14 +308,14 @@ def process_video():
     creation_time = data.get('creation_time', '').strip()
     is_preview = data.get('is_preview', False)
     
-    if not os.path.exists(src_path):
+    if not require_existing_file(src_path):
         return jsonify({"success": False, "error": f"源视频文件不存在: [{src_path}]"}), 400
-    if not os.path.exists(target_path):
+    if not require_existing_file(target_path):
         return jsonify({"success": False, "error": "目标视频文件不存在"}), 400
         
     if is_preview:
-        out_path = os.path.join(tempfile.gettempdir(), "video_tool_preview.mp4")
-    elif not out_path:
+        out_path = make_preview_path(".mp4")
+    elif SERVER_MODE or not out_path:
         out_dir = os.path.dirname(target_path) or os.getcwd()
         out_path = os.path.join(out_dir, f"edited_{os.path.basename(target_path)}")
 
@@ -219,7 +328,8 @@ def process_video():
         cmd_extract.extend(["-vn", "-ac", "2", "-ar", "44100", "-c:a", "pcm_s16le", extracted_audio])
         run_cmd(cmd_extract)
         
-        ext_duration = get_video_info(extracted_audio).get('duration', 0) if os.path.exists(extracted_audio) else duration
+        extracted_info = get_video_info(extracted_audio) if os.path.exists(extracted_audio) else None
+        ext_duration = extracted_info.get('duration', duration) if extracted_info else duration
         
         if replace_mode == 'segment' and target_start >= 0:
             audio_before = os.path.join(temp_dir, "before.wav")
@@ -287,12 +397,12 @@ def boost_volume():
     out_path = data.get('out_path', '').strip().strip('"').strip("'")
     is_preview = data.get('is_preview', False)
     
-    if not os.path.exists(src_path):
+    if not require_existing_file(src_path):
         return jsonify({"success": False, "error": f"源视频文件不存在: [{src_path}]"}), 400
         
     if is_preview:
-        out_path = os.path.join(tempfile.gettempdir(), "video_tool_vol_preview.mp4")
-    elif not out_path:
+        out_path = make_preview_path(".mp4")
+    elif SERVER_MODE or not out_path:
         out_dir = os.path.dirname(src_path) or os.getcwd()
         base, ext = os.path.splitext(os.path.basename(src_path))
         out_path = os.path.join(out_dir, f"{base}_boosted{ext}")
@@ -329,6 +439,11 @@ def boost_volume():
 
 @app.route('/api/open_location', methods=['POST'])
 def open_location():
+    if SERVER_MODE or os.name != "nt":
+        return jsonify({
+            "success": False,
+            "error": "服务器模式不能打开服务器目录，请使用下载按钮。"
+        }), 400
     data = request.json or {}
     filepath = data.get('filepath', '').strip().strip('"').strip("'")
     
@@ -358,35 +473,9 @@ def open_location():
 @app.route('/api/download', methods=['GET'])
 def download_file():
     filepath = request.args.get('path')
-    if not filepath or not os.path.exists(filepath):
-        return f"File not found: {filepath}", 404
+    if not require_existing_file(filepath):
+        return "File not found or access denied", 404
     return send_file(filepath, as_attachment=True)
-
-
-
-@app.route('/api/webhook', methods=['POST'])
-def github_webhook():
-    """
-    GitHub Webhook receiver for automatic CI/CD deployment.
-    When a push event is received, it pulls the latest code and exits.
-    Systemd will automatically restart the service, loading the new code.
-    """
-    try:
-        # Run git pull
-        subprocess.run(["git", "pull"], cwd=os.getcwd(), check=True)
-        
-        # Start a thread to restart the server after returning success
-        def restart():
-            import time
-            time.sleep(2)
-            os._exit(0) # Crash the app, systemd will revive it
-            
-        import threading
-        threading.Thread(target=restart).start()
-        
-        return jsonify({"success": True, "message": "Code updated, restarting server..."}), 200
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
 
 
 if __name__ == '__main__':

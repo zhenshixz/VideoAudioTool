@@ -747,7 +747,7 @@
         }
 
         
-        async function isRemote() {
+        function isRemote() {
             return window.location.hostname !== '127.0.0.1' && window.location.hostname !== 'localhost';
         }
 
@@ -832,7 +832,7 @@
                 const data = await res.json();
                 hideLoading();
                 if (data.success) {
-                    if (isRemote() ? `✨ 处理成功！\n\n是否立刻将文件下载到手机？` : `🎉 导出成功！\n保存文件: ${data.out_path}\n${data.time_modified ? '创建时间已成功更新！' : ''}\n\n是否立即下载该文件到设备？(PC端也可取消后点击📂打开目录)`) {
+                    if (confirm(isRemote() ? `✨ 处理成功！\n\n是否立刻将文件下载到当前设备？` : `🎉 导出成功！\n保存文件: ${data.out_path}\n${data.time_modified ? '创建时间已成功更新！' : ''}\n\n是否立即下载该文件到设备？(PC端也可取消后点击📂打开目录)`)) {
                         window.open('/api/download?path=' + encodeURIComponent(data.out_path));
                     }
                 } else alert("导出失败: " + data.error);
@@ -914,7 +914,7 @@
                 const data = await res.json();
                 hideLoading();
                 if (data.success) {
-                    if (isRemote() ? `✨ 处理成功！\n\n是否立刻将文件下载到手机？` : `✅ 时间修改成功！\n已保存至: ${data.out_path}\n\n是否立即下载该文件到设备？(PC端也可取消后点击📂打开目录)`) {
+                    if (confirm(isRemote() ? `✨ 处理成功！\n\n是否立刻将文件下载到当前设备？` : `✅ 时间修改成功！\n已保存至: ${data.out_path}\n\n是否立即下载该文件到设备？(PC端也可取消后点击📂打开目录)`)) {
                         window.open('/api/download?path=' + encodeURIComponent(data.out_path));
                     }
                 } else {
@@ -970,7 +970,7 @@
                         videoEl.src = `/api/stream?path=${encodeURIComponent(data.out_path)}&t=${new Date().getTime()}`;
                         document.getElementById('previewModalOverlay').style.display = 'flex';
                     } else {
-                        if (isRemote() ? `✨ 处理成功！\n\n是否立刻将文件下载到手机？` : `✅ 扩大音量成功！\n保留了原始创建时间。\n已保存至: ${data.out_path}\n\n是否立即下载该文件到设备？(PC端也可取消后点击📂打开目录)`) {
+                        if (confirm(isRemote() ? `✨ 处理成功！\n\n是否立刻将文件下载到当前设备？` : `✅ 扩大音量成功！\n保留了原始创建时间。\n已保存至: ${data.out_path}\n\n是否立即下载该文件到设备？(PC端也可取消后点击📂打开目录)`)) {
                             window.open('/api/download?path=' + encodeURIComponent(data.out_path));
                         }
                     }
@@ -1024,7 +1024,7 @@
                 const data = await res.json();
                 hideLoading();
                 if (data.success) {
-                    if (isRemote() ? `✨ 处理成功！\n\n是否立刻将文件下载到手机？` : `✅ MP3 导出成功！\n已保存至: ${data.out_path}\n\n是否立即下载该文件到设备？(PC端也可取消后点击📂打开目录)`) {
+                    if (confirm(isRemote() ? `✨ 处理成功！\n\n是否立刻将文件下载到当前设备？` : `✅ MP3 导出成功！\n已保存至: ${data.out_path}\n\n是否立即下载该文件到设备？(PC端也可取消后点击📂打开目录)`)) {
                         window.open('/api/download?path=' + encodeURIComponent(data.out_path));
                     }
                 }
