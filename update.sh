@@ -38,8 +38,30 @@ wait_for_health() {
 
 CURRENT_COMMIT="$(git_safe rev-parse HEAD)"
 
-if ! git_safe fetch --quiet origin main; then
-    echo "[update] GitHub is temporarily unreachable; the next timer run will retry."
+ORIGIN_URL="$(git_safe remote get-url origin)"
+FETCH_URLS=("${ORIGIN_URL}")
+if [[ "${ORIGIN_URL}" == https://github.com/* ]]; then
+    FETCH_URLS+=(
+        "https://ghfast.top/${ORIGIN_URL}"
+        "https://gh-proxy.com/${ORIGIN_URL}"
+    )
+fi
+
+FETCH_SUCCEEDED=0
+for fetch_url in "${FETCH_URLS[@]}"; do
+    echo "[update] Trying source: ${fetch_url}"
+    if timeout 60 git_safe \
+        -c http.lowSpeedLimit=1024 \
+        -c http.lowSpeedTime=20 \
+        fetch --quiet "${fetch_url}" \
+        "+refs/heads/main:refs/remotes/origin/main"; then
+        FETCH_SUCCEEDED=1
+        break
+    fi
+done
+
+if [[ "${FETCH_SUCCEEDED}" -ne 1 ]]; then
+    echo "[update] All GitHub sources are temporarily unreachable; the next timer run will retry."
     exit 0
 fi
 

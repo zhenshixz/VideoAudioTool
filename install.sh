@@ -63,8 +63,8 @@ printf " VideoAudioTool 一键部署（Alibaba Cloud Linux 3）\n"
 printf "============================================================\n"
 printf "项目目录: %s\n" "${PROJECT_DIR}"
 
-step "1/7" "安装 Git、curl 和 Python 3.11"
-"${PKG}" install -y git curl python3.11
+step "1/7" "安装 Git、curl、xz 和 Python 3.11"
+"${PKG}" install -y git curl xz python3.11
 
 if ! python3.11 -m pip --version >/dev/null 2>&1; then
     "${PKG}" install -y python3.11-pip
@@ -75,17 +75,85 @@ python3.11 -m pip --version
 
 step "2/7" "安装 FFmpeg"
 if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then
-    "${PKG}" install -y epel-release
+    RPMFUSION_REPO="/etc/yum.repos.d/videoaudiotool-rpmfusion.repo"
+    RPMFUSION_KEY="/etc/pki/rpm-gpg/RPM-GPG-KEY-rpmfusion-free-el-8"
+    RPMFUSION_KEY_URLS=(
+        "https://mirrors.tuna.tsinghua.edu.cn/rpmfusion/free/el/RPM-GPG-KEY-rpmfusion-free-el-8"
+        "https://mirrors.ustc.edu.cn/rpmfusion/free/el/RPM-GPG-KEY-rpmfusion-free-el-8"
+        "https://mirrors.nju.edu.cn/rpmfusion/free/el/RPM-GPG-KEY-rpmfusion-free-el-8"
+    )
 
-    if ! rpm -q rpmfusion-free-release >/dev/null 2>&1; then
-        if ! "${PKG}" install -y \
-            https://download1.rpmfusion.org/free/el/rpmfusion-free-release-8.noarch.rpm; then
-            "${PKG}" install -y \
-                https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-8.noarch.rpm
+    printf "优先使用国内 RPM Fusion 镜像安装 FFmpeg...\n"
+    mkdir -p "$(dirname "${RPMFUSION_KEY}")"
+    rm -f "${RPMFUSION_KEY}"
+    for key_url in "${RPMFUSION_KEY_URLS[@]}"; do
+        printf "尝试密钥源: %s\n" "${key_url}"
+        if curl --fail --location --retry 2 --connect-timeout 10 \
+            --output "${RPMFUSION_KEY}" "${key_url}"; then
+            break
         fi
+        rm -f "${RPMFUSION_KEY}"
+    done
+
+    if [[ -s "${RPMFUSION_KEY}" ]]; then
+        cat > "${RPMFUSION_REPO}" <<EOF
+[videoaudiotool-rpmfusion-free-updates]
+name=VideoAudioTool RPM Fusion Free Updates - EL 8
+baseurl=https://mirrors.tuna.tsinghua.edu.cn/rpmfusion/free/el/updates/8/\$basearch/
+        https://mirrors.ustc.edu.cn/rpmfusion/free/el/updates/8/\$basearch/
+        https://mirrors.nju.edu.cn/rpmfusion/free/el/updates/8/\$basearch/
+enabled=1
+gpgcheck=1
+repo_gpgcheck=0
+gpgkey=file://${RPMFUSION_KEY}
+skip_if_unavailable=1
+EOF
     fi
 
-    "${PKG}" install -y ffmpeg
+    if [[ -s "${RPMFUSION_KEY}" ]] && \
+        "${PKG}" --enablerepo=videoaudiotool-rpmfusion-free-updates install -y ffmpeg; then
+        printf "FFmpeg 已通过国内软件源安装。\n"
+    else
+        printf "国内软件源安装失败，切换到静态包备用线路...\n"
+        FFMPEG_TMP_DIR="$(mktemp -d /tmp/videoaudiotool-ffmpeg.XXXXXX)"
+        FFMPEG_ARCHIVE="${FFMPEG_TMP_DIR}/ffmpeg.tar.xz"
+        FFMPEG_URLS=(
+            "https://ghfast.top/https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz"
+            "https://gh-proxy.com/https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz"
+            "https://ghproxy.net/https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz"
+            "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz"
+        )
+
+        FFMPEG_DOWNLOADED=0
+        for ffmpeg_url in "${FFMPEG_URLS[@]}"; do
+            printf "尝试备用下载源: %s\n" "${ffmpeg_url}"
+            rm -f "${FFMPEG_ARCHIVE}"
+            if curl --fail --location --retry 2 --connect-timeout 15 \
+                --output "${FFMPEG_ARCHIVE}" "${ffmpeg_url}" && \
+                tar -tJf "${FFMPEG_ARCHIVE}" >/dev/null 2>&1; then
+                FFMPEG_DOWNLOADED=1
+                break
+            fi
+        done
+
+        if [[ "${FFMPEG_DOWNLOADED}" -ne 1 ]]; then
+            rm -rf "${FFMPEG_TMP_DIR}"
+            die "国内镜像和备用线路均无法下载 FFmpeg，请稍后重试。"
+        fi
+
+        tar -xJf "${FFMPEG_ARCHIVE}" -C "${FFMPEG_TMP_DIR}"
+        FFMPEG_BIN="$(find "${FFMPEG_TMP_DIR}" -type f -path '*/bin/ffmpeg' -print -quit)"
+        FFPROBE_BIN="$(find "${FFMPEG_TMP_DIR}" -type f -path '*/bin/ffprobe' -print -quit)"
+
+        if [[ -z "${FFMPEG_BIN}" || -z "${FFPROBE_BIN}" ]]; then
+            rm -rf "${FFMPEG_TMP_DIR}"
+            die "下载包中未找到 ffmpeg 或 ffprobe。"
+        fi
+
+        install -m 0755 "${FFMPEG_BIN}" /usr/local/bin/ffmpeg
+        install -m 0755 "${FFPROBE_BIN}" /usr/local/bin/ffprobe
+        rm -rf "${FFMPEG_TMP_DIR}"
+    fi
 fi
 
 ffmpeg -version 2>&1 | awk 'NR == 1 { print }'
