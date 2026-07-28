@@ -17,7 +17,15 @@ if command -v apt-get &> /dev/null; then
 elif command -v yum &> /dev/null; then
     echo "[1/4] 📦 检测到 CentOS/RedHat 系统，正在安装底层组件..."
     sudo yum install -y epel-release || true
-    sudo yum install -y ffmpeg git python3-pip
+    sudo yum install -y git python3-pip
+    if ! command -v ffmpeg &> /dev/null; then
+        echo "⏬ 正在下载 FFmpeg 静态版以兼容该系统..."
+        wget -q https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz || curl -sSO https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz
+        tar xf ffmpeg-release-amd64-static.tar.xz
+        sudo mv ffmpeg-*-static/ffmpeg /usr/local/bin/
+        sudo mv ffmpeg-*-static/ffprobe /usr/local/bin/
+        rm -rf ffmpeg-*
+    fi
 else
     echo "❌ 无法识别的操作系统包管理器，请手动安装 ffmpeg, git, python3-pip"
     exit 1
