@@ -362,6 +362,33 @@ def download_file():
         return f"File not found: {filepath}", 404
     return send_file(filepath, as_attachment=True)
 
+
+
+@app.route('/api/webhook', methods=['POST'])
+def github_webhook():
+    """
+    GitHub Webhook receiver for automatic CI/CD deployment.
+    When a push event is received, it pulls the latest code and exits.
+    Systemd will automatically restart the service, loading the new code.
+    """
+    try:
+        # Run git pull
+        subprocess.run(["git", "pull"], cwd=os.getcwd(), check=True)
+        
+        # Start a thread to restart the server after returning success
+        def restart():
+            import time
+            time.sleep(2)
+            os._exit(0) # Crash the app, systemd will revive it
+            
+        import threading
+        threading.Thread(target=restart).start()
+        
+        return jsonify({"success": True, "message": "Code updated, restarting server..."}), 200
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 if __name__ == '__main__':
     print("启动 视频音频替换与时间修改 Web服务...")
     app.run(host='127.0.0.1', port=5000, debug=False)
