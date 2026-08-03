@@ -13,3 +13,6 @@ data/
 uploads/
 previews/
 *.tmp
+
+# Installed locally from the official Android SDK Platform-Tools package
+tools/platform-tools/
