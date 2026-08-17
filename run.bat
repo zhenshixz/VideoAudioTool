@@ -1,4 +1,5 @@
 @echo off
+@chcp 65001 >nul
 setlocal EnableDelayedExpansion
 title VideoAudioTool Web Server
 cd /d "%~dp0"

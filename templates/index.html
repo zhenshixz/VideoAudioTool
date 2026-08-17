@@ -197,64 +197,142 @@
             <button class="tab-btn" id="tabVolumeBtn" onclick="switchTab('volume')">
                 <span class="tab-icon">🔊</span>
                 <div class="tab-text">
-                    <span class="tab-title">扩大视频音量</span>
-                    <span class="tab-sub">一键扩大手机视频原本录制声音过小的问题</span>
+                    <span class="tab-title">扩大音视频音量</span>
+                    <span class="tab-sub">无损放大视频或 MP3 等音频音量，带防破音自动压限</span>
                 </div>
             </button>
         </div>
 
 
-        <!-- 视频音量增大 -->
-        <div class="module-panel grid-2" id="panelVolume">
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-title">🔊 选择需要扩大音量的视频</div>
-                    <span class="badge badge-blue">原视频</span>
-                </div>
-                <div class="file-input-group">
-                    <input type="text" id="volSrcPath" placeholder="输入视频本地路径，或点击上传..." onchange="loadVideoInfo('volSrc')">
-                    <button class="btn btn-secondary" onclick="triggerUpload('volSrc')">浏览/上传</button>
-                    <input type="file" id="volSrcFileInput" style="display: none;" onchange="handleFileUpload('volSrc')">
-                </div>
-                <div class="video-container" style="height: 280px;">
-                    <video id="volSrcVideo" controls style="display: none;"></video>
-                    <div class="video-placeholder" id="volSrcPlaceholder">预览待处理的视频</div>
-                </div>
-            </div>
-
-            <div class="card" style="justify-content: space-between;">
-                <div>
-                    <div class="card-header" style="margin-bottom: 1rem;">
-                        <div class="card-title" style="color: var(--primary);">🔊 调节音量参数</div>
+        <!-- 扩大音视频音量模块 -->
+        <div class="module-panel" id="panelVolume" style="display: none; flex-direction: column; gap: 1.5rem; width: 100%;">
+            
+            <!-- 第一部分：视频音量放大 -->
+            <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.25rem; box-shadow: var(--shadow);">
+                <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 0.75rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color);">
+                    <div style="font-size: 1.05rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; color: var(--text-primary);">
+                        <span>🎬 第一部分：扩大视频音量</span>
+                        <span class="badge badge-blue" style="margin-left: 0.5rem;">画面无损拷贝 + 音频无损压限</span>
                     </div>
-                    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
-                        <div class="time-input-box">
-                            <label style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 600;">
-                                <span>1. 拖动调节音量增益 (分贝)</span>
-                                <span id="volDbText" style="color: var(--danger);">+10 dB (增大)</span>
-                            </label>
-                            <input type="range" id="volDbSlider" min="-20" max="30" step="1" value="10" style="width: 100%; margin-top: 0.5rem; cursor: pointer;" oninput="onVolDbChange()">
+                </div>
+
+                <div class="grid-2">
+                    <div class="card" style="border: none; padding: 0; box-shadow: none;">
+                        <div class="card-header" style="border-bottom: none; padding-bottom: 0.25rem;">
+                            <div class="card-title">1. 选择需要扩大音量的视频</div>
                         </div>
-                        <div class="time-input-box">
-                            <label style="font-size: 0.85rem; font-weight: 600;">2. 导出保存位置 (留空则保存在原视频目录下)</label>
-                            <div style="display: flex; gap: 0.5rem;">
-                                <input type="text" id="volOutDir" placeholder="点击右侧浏览选择文件夹...">
-                                <button class="btn btn-secondary" onclick="browseFolderForVol()">浏览...</button>
+                        <div class="file-input-group">
+                            <input type="text" id="volSrcPath" placeholder="输入视频本地路径，或点击上传..." onchange="loadVideoInfo('volSrc')">
+                            <button class="btn btn-secondary" onclick="triggerUpload('volSrc')">浏览/上传</button>
+                            <input type="file" id="volSrcFileInput" accept="video/*" style="display: none;" onchange="handleFileUpload('volSrc')">
+                        </div>
+                        <div class="video-container" style="height: 240px; margin-top: 0.5rem;">
+                            <video id="volSrcVideo" controls style="display: none;"></video>
+                            <div class="video-placeholder" id="volSrcPlaceholder">选择或拖入视频预览</div>
+                        </div>
+                        <div id="volSrcInfoBox" style="display: none; width: 100%;"></div>
+                    </div>
+
+                    <div class="card" style="border: none; padding: 0; box-shadow: none; justify-content: space-between;">
+                        <div>
+                            <div class="card-header" style="border-bottom: none; padding-bottom: 0.25rem;">
+                                <div class="card-title" style="color: var(--primary);">2. 调节视频音量参数</div>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 0.25rem;">
+                                <div class="time-input-box">
+                                    <label style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 600;">
+                                        <span>拖动调节音量增益 (分贝)</span>
+                                        <span id="volDbText" style="color: var(--danger);">+10 dB (增大)</span>
+                                    </label>
+                                    <input type="range" id="volDbSlider" min="-20" max="30" step="1" value="10" style="width: 100%; margin-top: 0.5rem; cursor: pointer;" oninput="onVolDbChange()">
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">🛡️ 已启用智能 Limiter 压限算法：自动防止调大后破音与爆音</div>
+                                </div>
+                                <div class="time-input-box">
+                                    <label style="font-size: 0.85rem; font-weight: 600;">导出保存位置 (留空则保存在原视频目录下)</label>
+                                    <div style="display: flex; gap: 0.5rem; margin-top: 0.25rem;">
+                                        <input type="text" id="volOutDir" placeholder="点击右侧浏览选择文件夹...">
+                                        <button class="btn btn-secondary" onclick="browseFolderForVol()">浏览...</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
+
+                        <div style="display: flex; gap: 0.75rem; padding-top: 1rem; margin-top: 1rem; border-top: 1px solid var(--border-color);">
+                            <button class="btn btn-secondary" onclick="boostVolume(true)" style="flex: 1; padding: 0.75rem; font-weight: 600;">
+                                👀 预览前10秒效果
+                            </button>
+                            <button class="btn btn-primary" onclick="boostVolume(false)" style="flex: 1; padding: 0.75rem; font-weight: 600;">
+                                ⚡ 一键导出视频
+                            </button>
+                            <button class="btn btn-secondary" onclick="openTargetLocation('volume')" title="打开文件目录">📂</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 第二部分：上传 MP3 音频无损扩大音量 -->
+            <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.25rem; box-shadow: var(--shadow);">
+                <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 0.75rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color);">
+                    <div style="font-size: 1.05rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; color: var(--text-primary);">
+                        <span>🎧 第二部分：上传 MP3 / 音频扩大分贝</span>
+                        <span class="badge badge-green" style="margin-left: 0.5rem;">高保真 320k 格式 + 零破音无损拉升</span>
                     </div>
                 </div>
 
-                <div style="display: flex; gap: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
-                    <button class="btn btn-secondary" onclick="boostVolume(true)" style="flex: 1; padding: 0.8rem; font-size: 1rem; font-weight: 600;">
-                        👀 预览前10秒效果
-                    </button>
-                    <button class="btn btn-primary" onclick="boostVolume(false)" style="flex: 1; padding: 0.8rem; font-size: 1rem; font-weight: 600;">
-                        ⚡ 一键导出视频
-                    </button>
-                    <button class="btn btn-secondary" onclick="openTargetLocation('volume')" title="打开文件目录">📂</button>
+                <div class="grid-2">
+                    <div class="card" style="border: none; padding: 0; box-shadow: none;">
+                        <div class="card-header" style="border-bottom: none; padding-bottom: 0.25rem;">
+                            <div class="card-title">1. 选择/上传 MP3 音频文件</div>
+                        </div>
+                        <div class="file-input-group">
+                            <input type="text" id="audioVolSrcPath" placeholder="输入 MP3 / WAV / AAC 本地路径，或点击上传..." onchange="loadVideoInfo('audioVolSrc')">
+                            <button class="btn btn-secondary" onclick="triggerUpload('audioVolSrc')">浏览/上传</button>
+                            <input type="file" id="audioVolSrcFileInput" accept="audio/*,.mp3,.wav,.m4a,.flac,.aac" style="display: none;" onchange="handleFileUpload('audioVolSrc')">
+                        </div>
+                        <div class="video-container" style="height: 140px; margin-top: 0.5rem;">
+                            <audio id="audioVolSrcAudio" controls style="display: none; width: min(680px, 90%);"></audio>
+                            <div class="video-placeholder" id="audioVolSrcPlaceholder">选择或拖入音频试听</div>
+                        </div>
+                        <div id="audioVolSrcInfoBox" style="display: none; width: 100%;"></div>
+                    </div>
+
+                    <div class="card" style="border: none; padding: 0; box-shadow: none; justify-content: space-between;">
+                        <div>
+                            <div class="card-header" style="border-bottom: none; padding-bottom: 0.25rem;">
+                                <div class="card-title" style="color: var(--primary);">2. 调节音频增益分贝 (无损不破音)</div>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 0.25rem;">
+                                <div class="time-input-box">
+                                    <label style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 600;">
+                                        <span>拖动调节音量增益 (分贝)</span>
+                                        <span id="audioVolDbText" style="color: var(--danger);">+10 dB (增大)</span>
+                                    </label>
+                                    <input type="range" id="audioVolDbSlider" min="-20" max="30" step="1" value="10" style="width: 100%; margin-top: 0.5rem; cursor: pointer;" oninput="onAudioVolDbChange()">
+                                    <div style="font-size: 0.75rem; color: var(--success); font-weight: 500; margin-top: 0.25rem;">✨ 结合动态峰值平滑压限，再大声音也不产生爆音、削顶与杂音</div>
+                                </div>
+                                <div class="time-input-box">
+                                    <label style="font-size: 0.85rem; font-weight: 600;">导出保存位置 (留空则保存在原音频目录下)</label>
+                                    <div style="display: flex; gap: 0.5rem; margin-top: 0.25rem;">
+                                        <input type="text" id="audioVolOutDir" placeholder="点击右侧浏览选择文件夹...">
+                                        <button class="btn btn-secondary" onclick="browseFolderForAudioVol()">浏览...</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 0.75rem; padding-top: 1rem; margin-top: 1rem; border-top: 1px solid var(--border-color);">
+                            <button class="btn btn-secondary" onclick="boostAudioVolume(true)" style="flex: 1; padding: 0.75rem; font-weight: 600;">
+                                👀 试听前10秒无损效果
+                            </button>
+                            <button class="btn btn-success" onclick="boostAudioVolume(false)" style="flex: 1; padding: 0.75rem; font-weight: 600;">
+                                ⚡ 一键导出 MP3
+                            </button>
+                            <button class="btn btn-secondary" onclick="openTargetLocation('audioVolume')" title="打开文件目录">📂</button>
+                        </div>
+                    </div>
                 </div>
             </div>
+
         </div>
         <!-- 视频音轨替换 -->
         <div class="module-panel grid-2 active" id="panelAudioTrack">
@@ -425,6 +503,49 @@
                     </div>
                 </div>
                 <div id="phoneTimeResult" style="display: none; margin-top: 1rem; padding: 1rem; border-radius: 8px; background: var(--bg-secondary); font-size: 0.85rem; line-height: 1.7; white-space: pre-wrap;"></div>
+
+                <div style="margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid var(--border-color);">
+                    <div class="card-header" style="margin-bottom: 0.85rem;">
+                        <div>
+                            <div style="font-weight: 700;">🕒 调整已写入视频的相册时间</div>
+                            <div style="margin-top: 0.3rem; color: var(--text-secondary); font-size: 0.82rem; line-height: 1.5;">自动查找 DCIM、Pictures、Movies 中包含本工具视频的文件夹；仅调整 OPPO 相册的显示与排序时间，不修改视频内容。</div>
+                        </div>
+                        <button class="btn btn-secondary" onclick="loadPhoneEvidenceVideos()">刷新列表</button>
+                    </div>
+                    <div class="grid-2" style="display: grid;">
+                        <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+                            <div class="time-input-box">
+                                <label for="phoneEvidenceFolder">1. 选择手机文件夹</label>
+                                <select id="phoneEvidenceFolder" onchange="onPhoneEvidenceFolderChange()">
+                                    <option value="">请先连接手机并刷新列表</option>
+                                </select>
+                            </div>
+                            <div class="time-input-box">
+                                <label for="phoneEvidenceVideo">2. 选择之前通过工具写入的视频</label>
+                                <select id="phoneEvidenceVideo" onchange="onPhoneEvidenceVideoChange()">
+                                    <option value="">请先连接手机并刷新列表</option>
+                                </select>
+                            </div>
+                            <div id="phoneEvidenceCurrentInfo" style="padding: 0.8rem; border-radius: 8px; background: var(--bg-secondary); color: var(--text-secondary); font-size: 0.85rem; line-height: 1.65;">尚未选择视频</div>
+                            <div id="phoneEvidencePreviewBox" style="min-height: 220px; border-radius: 10px; background: #0f172a; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                                <video id="phoneEvidencePreview" controls playsinline style="display: none; width: 100%; max-height: 360px; background: #000;"></video>
+                                <div id="phoneEvidencePreviewStatus" style="padding: 1rem; color: #cbd5e1; text-align: center; font-size: 0.875rem; line-height: 1.6;">选择视频后会自动加载预览</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+                            <div class="time-input-box">
+                                <label for="phoneEvidenceNewTime">3. 输入正确的相册时间（北京时间）</label>
+                                <input type="text" id="phoneEvidenceNewTime" placeholder="YYYY-MM-DD HH:MM:SS">
+                            </div>
+                            <label style="display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.8rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; cursor: pointer; line-height: 1.5;">
+                                <input type="checkbox" id="phoneEvidenceTimeConfirmed" style="width: 18px; height: 18px; margin-top: 2px;">
+                                <span>我已通过预览核对视频和正确时间。操作会覆盖原相册时间，不创建手机视频副本；修改后请重新打开 OPPO 相册查看。</span>
+                            </label>
+                            <button class="btn btn-success" onclick="updatePhoneEvidenceGalleryTime()" style="padding: 0.8rem; font-weight: 700;">✅ 修改相册显示时间</button>
+                        </div>
+                    </div>
+                    <div id="phoneEvidenceTimeResult" style="display: none; margin-top: 1rem; padding: 1rem; border-radius: 8px; background: var(--bg-secondary); font-size: 0.85rem; line-height: 1.7; white-space: pre-wrap;"></div>
+                </div>
             </div>
         </div>
 
@@ -688,6 +809,24 @@
         </div>
     </div>
 
+        <!-- 统一处理结果成功弹窗 (分端优化：PC端直接定位文件夹 / 手机端直接下载) -->
+    <div class="overlay" id="resultModalOverlay" style="display: none;">
+        <div class="modal" style="width: 520px; text-align: left; padding: 1.5rem; border-radius: 14px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border-color); margin-bottom: 1rem;">
+                <h3 id="resultModalTitle" style="font-size: 1.15rem; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+                    🎉 处理成功
+                </h3>
+                <button class="btn btn-secondary" style="padding: 0.25rem 0.6rem; font-size: 0.85rem; border-radius: 6px;" onclick="closeResultModal()">✕</button>
+            </div>
+            
+            <div id="resultModalBody" style="display: flex; flex-direction: column; gap: 1rem;">
+            </div>
+
+            <div id="resultModalActions" style="display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+            </div>
+        </div>
+    </div>
+
     <div class="overlay" id="loadingOverlay">
         <div class="modal">
             <div class="spinner"></div>
@@ -697,6 +836,8 @@
     </div>
 
     <script>
+        var volSrcVolumeData = null;
+        var audioVolSrcVolumeData = null;
         // Custom Dual Range Slider Class
         class DualSlider {
             constructor(containerId, onUpdate) {
@@ -1020,7 +1161,7 @@
             document.getElementById('panelTimeEdit').classList.toggle('active', tab === 'time');
             document.getElementById('panelMp3').classList.toggle('active', tab === 'mp3');
             document.getElementById('panelFill').classList.toggle('active', tab === 'fill');
-            document.getElementById('panelVolume').classList.toggle('active', tab === 'volume');
+            const pVol = document.getElementById('panelVolume'); pVol.classList.toggle('active', tab === 'volume'); pVol.style.display = (tab === 'volume' ? 'flex' : 'none');
             
             const exportBtn = document.getElementById('headerExportBtn');
             if (exportBtn) exportBtn.style.display = (tab === 'audio' ? 'inline-flex' : 'none');
@@ -1079,8 +1220,27 @@
                 document.getElementById('fillTargetStartInput').disabled = false;
                 setFillTargetStart(0);
             } else if (type === 'volSrc') {
-                if (info && info.creation_time) {
-                    // do nothing specifically
+                const box = document.getElementById('volSrcInfoBox');
+                if (info && info.volume_info) {
+                    volSrcVolumeData = info.volume_info;
+                    updateVolEst('video', parseInt(document.getElementById('volDbSlider').value));
+                } else if (box) {
+                    box.style.display = 'none';
+                }
+            } else if (type === 'audioVolSrc') {
+                const audioEl = document.getElementById('audioVolSrcAudio');
+                const placeholder = document.getElementById('audioVolSrcPlaceholder');
+                if (placeholder) placeholder.style.display = 'none';
+                if (audioEl) {
+                    audioEl.src = `/api/stream?path=${encodeURIComponent(path)}`;
+                    audioEl.style.display = 'block';
+                }
+                const box = document.getElementById('audioVolSrcInfoBox');
+                if (info && info.volume_info) {
+                    audioVolSrcVolumeData = info.volume_info;
+                    updateVolEst('audio', parseInt(document.getElementById('audioVolDbSlider').value));
+                } else if (box) {
+                    box.style.display = 'none';
                 }
             } else if (type === 'timeOnly') {
                 if (info && info.creation_time) {
@@ -1242,9 +1402,7 @@
                 const data = await res.json();
                 hideLoading();
                 if (data.success) {
-                    if (confirm(isRemote() ? `✨ 处理成功！\n\n是否立刻将文件下载到当前设备？` : `🎉 导出成功！\n保存文件: ${data.out_path}\n${data.time_modified ? '创建时间已成功更新！' : ''}\n\n是否立即下载该文件到设备？(PC端也可取消后点击📂打开目录)`)) {
-                        window.open('/api/download?path=' + encodeURIComponent(data.out_path));
-                    }
+                    showResultModal('🎉 视频替换导出成功', data.out_path, data.time_modified ? '创建时间属性已成功更新！' : '');
                 } else alert("导出失败: " + data.error);
             } catch (err) { hideLoading(); alert("网络错误或系统异常: " + err.message); }
         }
@@ -1293,6 +1451,73 @@
         }
 
         
+        
+        var volSrcVolumeData = null;
+        var audioVolSrcVolumeData = null;
+
+        function showResultModal(title, outPath, extraInfo = '') {
+            const modal = document.getElementById('resultModalOverlay');
+            const titleEl = document.getElementById('resultModalTitle');
+            const bodyEl = document.getElementById('resultModalBody');
+            const actionsEl = document.getElementById('resultModalActions');
+
+            titleEl.innerHTML = title || '🎉 处理完成';
+            const fileName = outPath.split(/[\\/]/).pop();
+            const isPC = !isRemote() && !isMobileDevice();
+            const safePath = outPath.replace(/\\/g, '/');
+
+            if (isPC) {
+                bodyEl.innerHTML = `
+                    <div style="font-size: 0.9rem; color: var(--text-primary); line-height: 1.6;">
+                        ${extraInfo ? `<div style="margin-bottom: 0.5rem; color: var(--success); font-weight: 600;">${extraInfo}</div>` : ''}
+                        <div>文件已成功生成并保存在电脑本地磁盘：</div>
+                        <div style="background: var(--bg-secondary); border: 1px solid var(--border-color); padding: 0.6rem 0.8rem; border-radius: 8px; font-family: monospace; font-size: 0.85rem; word-break: break-all; margin-top: 0.4rem; color: var(--text-primary); user-select: all;">
+                            ${outPath}
+                        </div>
+                    </div>
+                `;
+
+                actionsEl.innerHTML = `
+                    <button class="btn btn-secondary" onclick="closeResultModal()">关闭</button>
+                    <button class="btn btn-secondary" onclick="window.open('/api/download?path=' + encodeURIComponent('${safePath}'))">📥 浏览器下载副本</button>
+                    <button class="btn btn-success" style="font-weight: 700;" onclick="openLocationDirect('${safePath}')">📂 打开所在文件夹</button>
+                `;
+            } else {
+                bodyEl.innerHTML = `
+                    <div style="font-size: 0.9rem; color: var(--text-primary); line-height: 1.6; text-align: center; padding: 0.5rem 0;">
+                        <div style="font-size: 2.2rem; margin-bottom: 0.3rem;">📱✨</div>
+                        <div style="font-weight: 700; font-size: 1.1rem; color: var(--text-primary);">${fileName}</div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">已生成完毕，正在为您下载存储到手机...</div>
+                        ${extraInfo ? `<div style="margin-top: 0.5rem; color: var(--success); font-size: 0.85rem; font-weight: 600;">${extraInfo}</div>` : ''}
+                    </div>
+                `;
+
+                actionsEl.innerHTML = `
+                    <button class="btn btn-secondary" onclick="closeResultModal()" style="flex: 1;">完成</button>
+                    <button class="btn btn-success" style="flex: 2; font-weight: 700; padding: 0.75rem;" onclick="window.open('/api/download?path=' + encodeURIComponent('${safePath}'))">📥 立即下载保存到手机</button>
+                `;
+
+                setTimeout(() => {
+                    window.open('/api/download?path=' + encodeURIComponent(outPath));
+                }, 600);
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        function closeResultModal() {
+            document.getElementById('resultModalOverlay').style.display = 'none';
+        }
+
+        function openLocationDirect(path) {
+            fetch('/api/open_location', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filepath: path })
+            }).then(res => res.json()).then(data => {
+                if (!data.success) alert("打开文件夹失败: " + data.error);
+            });
+        }
+
         let currentPreviewContext = 'audio';
         let currentPreviewPath = '';
 
@@ -1336,6 +1561,8 @@
             closePreviewModal();
             if (currentPreviewContext === 'volume') {
                 boostVolume(false);
+            } else if (currentPreviewContext === 'audioVolume') {
+                boostAudioVolume(false);
             } else if (currentPreviewContext === 'mp3Extract') {
                 exportMp3();
             } else if (currentPreviewContext === 'mp3Import') {
@@ -1384,9 +1611,7 @@
                 const data = await res.json();
                 hideLoading();
                 if (data.success) {
-                    if (confirm(isRemote() ? `✨ 处理成功！\n\n是否立刻将文件下载到当前设备？` : `✅ 时间修改成功！\n已保存至: ${data.out_path}\n\n是否立即下载该文件到设备？(PC端也可取消后点击📂打开目录)`)) {
-                        window.open('/api/download?path=' + encodeURIComponent(data.out_path));
-                    }
+                    showResultModal('⏱️ 视频创建时间修改成功', data.out_path);
                 } else {
                     alert("修改失败: " + data.error);
                 }
@@ -1416,6 +1641,11 @@
             }
         }
 
+        let phoneEvidenceVideos = [];
+        let phoneEvidenceFolders = [];
+        let phoneEvidencePreviewPath = '';
+        let phoneEvidencePreviewRequest = 0;
+
         async function checkPhoneConnection() {
             const statusEl = document.getElementById('phoneConnectionStatus');
             statusEl.style.color = 'var(--text-secondary)';
@@ -1426,6 +1656,7 @@
                 if (data.success) {
                     statusEl.style.color = 'var(--success)';
                     statusEl.innerText = `✅ 已连接：${data.model || 'OPPO 手机'}\nAndroid ${data.android || '未知'}${data.coloros ? ` · ${data.coloros}` : ''}\n设备序列号：${data.serial}`;
+                    await loadPhoneEvidenceVideos();
                 } else {
                     statusEl.style.color = 'var(--danger)';
                     statusEl.innerText = `❌ ${data.error || '手机连接失败'}`;
@@ -1435,6 +1666,214 @@
                 statusEl.style.color = 'var(--danger)';
                 statusEl.innerText = `❌ 检测失败：${err.message}`;
                 return { success: false };
+            }
+        }
+
+        function formatPhoneVideoSize(bytes) {
+            if (bytes === null || bytes === undefined) return '未知';
+            const units = ['B', 'KB', 'MB', 'GB'];
+            let value = Number(bytes);
+            let unitIndex = 0;
+            while (value >= 1024 && unitIndex < units.length - 1) {
+                value /= 1024;
+                unitIndex += 1;
+            }
+            return `${value.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+        }
+
+        async function loadPhoneEvidenceVideos(preferredName = '', requestedFolder = '') {
+            const folderEl = document.getElementById('phoneEvidenceFolder');
+            const selectEl = document.getElementById('phoneEvidenceVideo');
+            const infoEl = document.getElementById('phoneEvidenceCurrentInfo');
+            const folder = requestedFolder || folderEl.value || '';
+            clearPhoneEvidencePreview();
+            folderEl.disabled = true;
+            selectEl.disabled = true;
+            selectEl.innerHTML = '<option value="">正在读取手机视频列表...</option>';
+            infoEl.style.color = 'var(--text-secondary)';
+            infoEl.innerText = '正在扫描 DCIM 下由本工具写入的视频...';
+            try {
+                const query = folder ? `?folder=${encodeURIComponent(folder)}` : '';
+                const response = await fetch(`/api/phone/video_evidence/list${query}`);
+                const data = await response.json();
+                if (!data.success) throw new Error(data.error || '读取失败');
+
+                phoneEvidenceFolders = data.folders || [];
+                phoneEvidenceVideos = data.videos || [];
+                folderEl.innerHTML = '';
+                if (!phoneEvidenceFolders.length) {
+                    folderEl.innerHTML = '<option value="">DCIM 中没有找到本工具写入的视频</option>';
+                    selectEl.innerHTML = '<option value="">没有可选择的视频</option>';
+                    infoEl.innerText = '未找到 evidence_...mp4。请确认视频位于手机 DCIM、Pictures 或 Movies 目录中。';
+                    return;
+                }
+                phoneEvidenceFolders.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.path;
+                    option.textContent = `${item.label}（${item.count} 个）`;
+                    folderEl.appendChild(option);
+                });
+                folderEl.value = data.selected_folder;
+                folderEl.disabled = false;
+
+                selectEl.innerHTML = '';
+                if (!phoneEvidenceVideos.length) {
+                    selectEl.innerHTML = '<option value="">此文件夹中没有可调整的视频</option>';
+                    infoEl.innerText = '所选文件夹中没有找到本工具写入的视频。';
+                    return;
+                }
+
+                const placeholder = document.createElement('option');
+                placeholder.value = '';
+                placeholder.textContent = `请选择视频（共 ${phoneEvidenceVideos.length} 个）`;
+                selectEl.appendChild(placeholder);
+                phoneEvidenceVideos.forEach(video => {
+                    const option = document.createElement('option');
+                    option.value = video.name;
+                    option.textContent = `${video.gallery_time || '相册时间未知'} · ${video.name}`;
+                    selectEl.appendChild(option);
+                });
+                selectEl.disabled = false;
+                if (preferredName && phoneEvidenceVideos.some(video => video.name === preferredName)) {
+                    selectEl.value = preferredName;
+                    onPhoneEvidenceVideoChange(false);
+                } else {
+                    infoEl.innerText = `已读取 ${phoneEvidenceVideos.length} 个本工具写入的视频，请选择要调整的文件。`;
+                }
+            } catch (err) {
+                phoneEvidenceFolders = [];
+                phoneEvidenceVideos = [];
+                folderEl.innerHTML = '<option value="">读取失败，请先检测手机连接</option>';
+                selectEl.innerHTML = '<option value="">读取失败，请先检测手机连接</option>';
+                infoEl.innerText = `❌ ${err.message}`;
+                infoEl.style.color = 'var(--danger)';
+            } finally {
+                if (phoneEvidenceFolders.length) folderEl.disabled = false;
+                if (phoneEvidenceVideos.length) selectEl.disabled = false;
+            }
+        }
+
+        function onPhoneEvidenceFolderChange() {
+            const folder = document.getElementById('phoneEvidenceFolder').value;
+            clearPhoneEvidencePreview();
+            document.getElementById('phoneEvidenceNewTime').value = '';
+            document.getElementById('phoneEvidenceTimeConfirmed').checked = false;
+            loadPhoneEvidenceVideos('', folder);
+        }
+
+        function onPhoneEvidenceVideoChange(copyCurrentTime = true) {
+            const name = document.getElementById('phoneEvidenceVideo').value;
+            const infoEl = document.getElementById('phoneEvidenceCurrentInfo');
+            const video = phoneEvidenceVideos.find(item => item.name === name);
+            infoEl.style.color = 'var(--text-secondary)';
+            if (!video) {
+                infoEl.innerText = '尚未选择视频';
+                clearPhoneEvidencePreview();
+                return;
+            }
+            infoEl.innerText = `当前相册时间：${video.gallery_time || '未读取到'}\n文件名：${video.name}\n大小：${formatPhoneVideoSize(video.size)}\n手机位置：${video.phone_path}`;
+            if (copyCurrentTime && video.gallery_time) {
+                document.getElementById('phoneEvidenceNewTime').value = video.gallery_time;
+            }
+            document.getElementById('phoneEvidenceTimeConfirmed').checked = false;
+            preparePhoneEvidencePreview(video);
+        }
+
+        function clearPhoneEvidencePreview() {
+            phoneEvidencePreviewRequest += 1;
+            const videoEl = document.getElementById('phoneEvidencePreview');
+            const statusEl = document.getElementById('phoneEvidencePreviewStatus');
+            const oldPath = phoneEvidencePreviewPath;
+            phoneEvidencePreviewPath = '';
+            videoEl.pause();
+            videoEl.removeAttribute('src');
+            videoEl.load();
+            videoEl.style.display = 'none';
+            statusEl.style.display = 'block';
+            statusEl.style.color = '#cbd5e1';
+            statusEl.innerText = '选择视频后会自动加载预览';
+            if (oldPath) {
+                fetch('/api/delete_preview', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filepath: oldPath })
+                }).catch(() => {});
+            }
+        }
+
+        async function preparePhoneEvidencePreview(video) {
+            clearPhoneEvidencePreview();
+            const requestId = ++phoneEvidencePreviewRequest;
+            const videoEl = document.getElementById('phoneEvidencePreview');
+            const statusEl = document.getElementById('phoneEvidencePreviewStatus');
+            statusEl.innerText = '正在从手机读取视频预览，请保持手机解锁...';
+            try {
+                const response = await fetch('/api/phone/video_evidence/prepare_preview', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: video.name, phone_path: video.phone_path })
+                });
+                const data = await response.json();
+                if (!data.success) throw new Error(data.error || '预览读取失败');
+                if (requestId !== phoneEvidencePreviewRequest) {
+                    fetch('/api/delete_preview', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ filepath: data.preview_path })
+                    }).catch(() => {});
+                    return;
+                }
+                phoneEvidencePreviewPath = data.preview_path;
+                videoEl.src = `/api/stream?path=${encodeURIComponent(data.preview_path)}&t=${Date.now()}`;
+                videoEl.style.display = 'block';
+                statusEl.style.display = 'none';
+                videoEl.load();
+            } catch (err) {
+                if (requestId !== phoneEvidencePreviewRequest) return;
+                statusEl.style.display = 'block';
+                statusEl.style.color = '#fca5a5';
+                statusEl.innerText = `预览失败：${err.message}\n可以保持手机解锁后重新选择该视频。`;
+            }
+        }
+
+        async function updatePhoneEvidenceGalleryTime() {
+            const name = document.getElementById('phoneEvidenceVideo').value;
+            const video = phoneEvidenceVideos.find(item => item.name === name);
+            const eventTime = document.getElementById('phoneEvidenceNewTime').value.trim();
+            const confirmed = document.getElementById('phoneEvidenceTimeConfirmed').checked;
+            const resultEl = document.getElementById('phoneEvidenceTimeResult');
+            if (!name) { alert('请选择要调整的视频。'); return; }
+            if (!video) { alert('视频列表已失效，请刷新后重新选择。'); return; }
+            if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(eventTime)) {
+                alert('请输入正确格式：YYYY-MM-DD HH:MM:SS');
+                return;
+            }
+            if (!confirmed) { alert('请先勾选确认已核对视频和正确时间。'); return; }
+
+            showLoading('正在修改 OPPO 相册显示时间...');
+            try {
+                const response = await fetch('/api/phone/video_evidence/update_gallery_time', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, phone_path: video.phone_path, event_time: eventTime, confirmed })
+                });
+                const data = await response.json();
+                hideLoading();
+                resultEl.style.display = 'block';
+                if (!data.success) {
+                    resultEl.style.color = 'var(--danger)';
+                    resultEl.innerText = `❌ 修改失败\n${data.error || '未知错误'}`;
+                    return;
+                }
+                resultEl.style.color = 'var(--success)';
+                resultEl.innerText = `✅ 相册显示时间已修改\n原时间：${data.previous_gallery_time || '未知'}\n新时间：${data.gallery_time}\n视频内容：未修改\n修正记录：${data.log_path}\n\n请完全退出并重新打开 OPPO 相册查看。`;
+                const selectedFolder = document.getElementById('phoneEvidenceFolder').value;
+                await loadPhoneEvidenceVideos(name, selectedFolder);
+            } catch (err) {
+                hideLoading();
+                resultEl.style.display = 'block';
+                resultEl.style.color = 'var(--danger)';
+                resultEl.innerText = `❌ 修改失败\n${err.message}`;
             }
         }
 
@@ -1484,7 +1923,80 @@
         }
 
         
-                function onVolDbChange() {
+                function onAudioVolDbChange() {
+            const val = parseInt(document.getElementById('audioVolDbSlider').value);
+            const textEl = document.getElementById('audioVolDbText');
+            if (val > 0) {
+                textEl.innerText = `+${val} dB (增大)`;
+                textEl.style.color = 'var(--danger)';
+            } else if (val < 0) {
+                textEl.innerText = `${val} dB (减小)`;
+                textEl.style.color = 'var(--warning)';
+            } else {
+                textEl.innerText = `0 dB (原音量)`;
+                textEl.style.color = 'var(--primary)';
+            }
+            updateVolEst('audio', val);
+        }
+
+        async function browseFolderForAudioVol() {
+            if (isRemote()) {
+                alert("手机端提示：无法调用电脑的文件夹选择器。\n\n请直接留空，处理完成后会自动弹出【下载到手机】的提示。");
+                return;
+            }
+            try {
+                const res = await fetch('/api/browse_folder');
+                const data = await res.json();
+                if (data.success && data.path) {
+                    document.getElementById('audioVolOutDir').value = data.path;
+                    localStorage.setItem('lastOutDir', data.path);
+                }
+            } catch (e) {
+                console.error("浏览文件夹出错:", e);
+            }
+        }
+
+        async function boostAudioVolume(isPreview = false) {
+            const filepath = document.getElementById('audioVolSrcPath').value.trim();
+            const volDb = parseFloat(document.getElementById('audioVolDbSlider').value) || 0.0;
+            let outPath = "";
+            const outDir = document.getElementById('audioVolOutDir').value.trim();
+            if (outDir) {
+                const filename = filepath.split(/[\\/]/).pop();
+                const match = filename.match(/(.*)(\.[^.]+)$/);
+                const base = match ? match[1] : filename;
+                outPath = outDir + '/' + base + '_boosted.mp3';
+                localStorage.setItem('lastOutDir', outDir);
+            }
+            
+            if (!filepath) { alert("请选择或上传需要扩音的 MP3/音频文件！"); return; }
+            
+            showLoading(isPreview ? "正在为您生成前10秒的扩音音频试听，请稍候..." : "正在无损放大全量 MP3 音量，请稍候...");
+            try {
+                const res = await fetch('/api/boost_volume', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ src_path: filepath, volume_db: volDb, out_path: outPath, is_preview: isPreview })
+                });
+                const data = await res.json();
+                hideLoading();
+                if (data.success) {
+                    if (isPreview) {
+                        openPreviewMedia(
+                            'audioVolume',
+                            `/api/stream?path=${encodeURIComponent(data.out_path)}&t=${new Date().getTime()}`,
+                            'audio',
+                            data.out_path
+                        );
+                    } else {
+                        showResultModal('🎧 MP3 音频音量放大成功', data.out_path, '已被 320k 高品质及防破音压限保护处理。');
+                    }
+                } else {
+                    alert("处理失败: " + data.error);
+                }
+            } catch (err) { hideLoading(); alert("网络错误或系统异常: " + err.message); }
+        }
+
+        function onVolDbChange() {
             const val = parseInt(document.getElementById('volDbSlider').value);
             const textEl = document.getElementById('volDbText');
             if (val > 0) {
@@ -1497,6 +2009,45 @@
                 textEl.innerText = `0 dB (原音量)`;
                 textEl.style.color = 'var(--primary)';
             }
+            updateVolEst('video', val);
+        }
+
+        function updateVolEst(type, boostDb) {
+            const data = type === 'video' ? volSrcVolumeData : audioVolSrcVolumeData;
+            const box = document.getElementById(type === 'video' ? 'volSrcInfoBox' : 'audioVolSrcInfoBox');
+            if (!box || !data || data.mean_volume_db === undefined) {
+                if (box) box.style.display = 'none';
+                return;
+            }
+
+            const mean = data.mean_volume_db.toFixed(1);
+            const peak = data.max_volume_db !== undefined ? data.max_volume_db.toFixed(1) : '未知';
+            
+            const newMean = (data.mean_volume_db + boostDb).toFixed(1);
+            
+            const isAudio = type === 'audio';
+            const themeColor = isAudio ? '#059669' : '#2563eb';
+            const bgColor = isAudio ? '#ecfdf5' : '#eff6ff';
+            const borderColor = isAudio ? '#a7f3d0' : '#bfdbfe';
+
+            box.style.display = 'block';
+            box.style.marginTop = '1rem';
+
+            box.innerHTML = `
+                <div style="display: flex; gap: 0.75rem; align-items: center; justify-content: center; width: 100%;">
+                    <div style="flex: 1; background: #f3f4f6; border: 1px solid #e5e7eb; padding: 1rem 0.5rem; border-radius: 8px; text-align: center;">
+                        <div style="font-size: 0.85rem; color: #6b7280; font-weight: 700;">📊 原始音量 (平均)</div>
+                        <div style="font-size: 1.6rem; font-weight: 800; color: #374151; margin-top: 0.35rem; line-height: 1;">${mean} <span style="font-size: 1rem; font-weight: 600;">dB</span></div>
+                        <div style="font-size: 0.75rem; color: #9ca3af; margin-top: 0.35rem; font-weight: 500;">原始峰值: ${peak} dB</div>
+                    </div>
+                    <div style="color: ${themeColor}; font-size: 1.6rem; font-weight: 900; opacity: 0.8;">➔</div>
+                    <div style="flex: 1; background: ${bgColor}; border: 1px solid ${borderColor}; padding: 1rem 0.5rem; border-radius: 8px; text-align: center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+                        <div style="font-size: 0.85rem; color: ${themeColor}; font-weight: 700;">🚀 扩大后音量 (预计)</div>
+                        <div style="font-size: 1.6rem; font-weight: 800; color: ${themeColor}; margin-top: 0.35rem; line-height: 1;">${newMean} <span style="font-size: 1rem; font-weight: 600;">dB</span></div>
+                        <div style="font-size: 0.75rem; color: ${themeColor}; opacity: 0.8; margin-top: 0.35rem; font-weight: 500;">压限器防破音兜底 ≤ -0.5 dB</div>
+                    </div>
+                </div>
+            `;
         }
 
         async function boostVolume(isPreview = false) {
@@ -1532,9 +2083,7 @@
                             data.out_path
                         );
                     } else {
-                        if (confirm(isRemote() ? `✨ 处理成功！\n\n是否立刻将文件下载到当前设备？` : `✅ 扩大音量成功！\n保留了原始创建时间。\n已保存至: ${data.out_path}\n\n是否立即下载该文件到设备？(PC端也可取消后点击📂打开目录)`)) {
-                            window.open('/api/download?path=' + encodeURIComponent(data.out_path));
-                        }
+                        showResultModal('🔊 视频音量扩大成功', data.out_path, '已为您保留原始创建时间，并通过 Limiter 防破音压限。');
                     }
                 } else {
                     alert("处理失败: " + data.error);
@@ -1551,6 +2100,7 @@
             else if (moduleId === 'mp3Target') path = document.getElementById('mp3TargetPath').value.trim();
             else if (moduleId === 'fill') path = document.getElementById('fillTargetPath').value.trim();
             else if (moduleId === 'volume') path = document.getElementById('volOutDir').value.trim() || document.getElementById('volSrcPath').value.trim();
+            else if (moduleId === 'audioVolume') path = document.getElementById('audioVolOutDir').value.trim() || document.getElementById('audioVolSrcPath').value.trim();
             
             if (!path) path = localStorage.getItem('lastOutDir') || "";
             
@@ -1585,9 +2135,7 @@
                 const data = await res.json();
                 hideLoading();
                 if (data.success) {
-                    if (confirm(isRemote() ? `✨ 处理成功！\n\n是否立刻将文件下载到当前设备？` : `✅ MP3 导出成功！\n已保存至: ${data.out_path}\n\n是否立即下载该文件到设备？(PC端也可取消后点击📂打开目录)`)) {
-                        window.open('/api/download?path=' + encodeURIComponent(data.out_path));
-                    }
+                    showResultModal('🎧 MP3 音频提取成功', data.out_path);
                 }
                 else alert("导出失败: " + data.error);
             } catch (err) { hideLoading(); alert("网络错误: " + err.message); }
@@ -1646,9 +2194,7 @@
                             'video',
                             data.out_path
                         );
-                    } else if (confirm(isRemote() ? `✨ 合成成功！\n\n是否立刻将文件下载到当前设备？` : `✅ 视频合成成功！\n已保存至: ${data.out_path}\n\n是否立即下载该文件？`)) {
-                        window.open('/api/download?path=' + encodeURIComponent(data.out_path));
-                    }
+                    } else { showResultModal('🎬 MP3 混流合成成功', data.out_path); }
                 } else alert(isPreview ? "预览生成失败: " + data.error : "合成失败: " + data.error);
             } catch (err) { hideLoading(); alert("网络错误: " + err.message); }
         }
@@ -1753,12 +2299,8 @@
                         'video',
                         data.out_path
                     );
-                } else if (isMobileDevice()) {
-                    if (confirm(`✨ 区间填充完成！\n\n是否立刻下载到当前设备？`)) {
-                        window.open('/api/download?path=' + encodeURIComponent(data.out_path));
-                    }
                 } else {
-                    alert(`✅ 区间填充完成！\n已保存至: ${data.out_path}`);
+                    showResultModal('🔁 MP3 区间填充成功', data.out_path);
                 }
             } catch (err) {
                 hideLoading();
@@ -1778,7 +2320,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             const lastDir = localStorage.getItem('lastOutDir');
             if (lastDir) {
-                const dirInputs = ['outDir', 'volOutDir'];
+                const dirInputs = ['outDir', 'volOutDir', 'audioVolOutDir'];
                 dirInputs.forEach(id => {
                     const el = document.getElementById(id);
                     if (el) el.value = lastDir;
@@ -1787,12 +2329,14 @@
         });
 
         window.addEventListener('beforeunload', () => {
-            if (!currentPreviewPath || !navigator.sendBeacon) return;
-            const payload = new Blob(
-                [JSON.stringify({ filepath: currentPreviewPath })],
-                { type: 'application/json' }
-            );
-            navigator.sendBeacon('/api/delete_preview', payload);
+            if (!navigator.sendBeacon) return;
+            [currentPreviewPath, phoneEvidencePreviewPath].filter(Boolean).forEach(filepath => {
+                const payload = new Blob(
+                    [JSON.stringify({ filepath })],
+                    { type: 'application/json' }
+                );
+                navigator.sendBeacon('/api/delete_preview', payload);
+            });
         });
 
 </script>

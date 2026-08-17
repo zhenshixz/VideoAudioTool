@@ -32,6 +32,10 @@ DATA_ROOT = os.path.abspath(
 UPLOAD_FOLDER = os.path.join(DATA_ROOT, "uploads")
 PREVIEW_FOLDER = os.path.join(DATA_ROOT, "previews")
 EVIDENCE_LOG_FOLDER = os.path.join(DATA_ROOT, "evidence_logs")
+PHONE_EVIDENCE_DIR = "/sdcard/DCIM/VideoEvidence"
+PHONE_DCIM_DIR = "/sdcard/DCIM"
+PHONE_MEDIA_ROOTS = ("/sdcard/DCIM", "/sdcard/Pictures", "/sdcard/Movies")
+PHONE_EVIDENCE_NAME_RE = re.compile(r"^evidence_\d{8}_\d{6}_[0-9a-fA-F]{8}\.mp4$")
 MAX_UPLOAD_GB = int(os.environ.get("VIDEO_TOOL_MAX_UPLOAD_GB", "2"))
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_GB * 1024 * 1024 * 1024
 
@@ -226,6 +230,51 @@ def get_phone_status():
     }
 
 
+def query_phone_media_record(adb_path, serial, display_name):
+    """Return the MediaStore row created for one of this tool's phone videos."""
+    if not PHONE_EVIDENCE_NAME_RE.fullmatch(display_name):
+        raise ValueError("视频文件名不属于本工具。")
+    query_cmd = [
+        adb_path, "-s", serial, "shell", "content", "query",
+        "--uri", "content://media/external/video/media",
+        "--projection", "_id:_display_name:datetaken:date_modified",
+        "--where", f"_display_name='{display_name}'"
+    ]
+    output = run_capture(query_cmd, timeout=20)
+    id_match = re.search(r"(?:^|[ ,])_id=(\d+)", output)
+    taken_match = re.search(r"(?:^|[ ,])datetaken=(\d+)", output)
+    modified_match = re.search(r"(?:^|[ ,])date_modified=(\d+)", output)
+    return {
+        "id": int(id_match.group(1)) if id_match else None,
+        "date_taken_ms": int(taken_match.group(1)) if taken_match else None,
+        "date_modified_s": int(modified_match.group(1)) if modified_match else None,
+        "raw": output
+    }
+
+
+def discover_phone_evidence_paths(adb_path, serial):
+    """Find tool-generated videos after moves between common gallery folders."""
+    paths = set()
+    for media_root in PHONE_MEDIA_ROOTS:
+        try:
+            output = run_capture([
+                adb_path, "-s", serial, "shell", "find", media_root,
+                "-type", "f", "-name", "evidence_*.mp4"
+            ], timeout=45)
+        except RuntimeError as exc:
+            if "No such file" in str(exc) or "不存在" in str(exc):
+                continue
+            raise
+        root_prefix = f"{media_root}/"
+        for line in output.splitlines():
+            path = line.strip().replace('\\', '/')
+            if not path.startswith(root_prefix) or "/../" in path:
+                continue
+            if PHONE_EVIDENCE_NAME_RE.fullmatch(path.rsplit('/', 1)[-1]):
+                paths.add(path)
+    return sorted(paths)
+
+
 def sha256_file(filepath):
     digest = hashlib.sha256()
     with open(filepath, "rb") as source:
@@ -294,6 +343,39 @@ def build_filled_audio(base_path, clip_path, output_path, start_seconds, mode, o
 
         output_audio.writeframes(b"")
 
+def get_audio_volume_info(filepath):
+    if not os.path.exists(filepath):
+        return None
+    try:
+        cmd = [
+            "ffmpeg", "-hide_banner", "-i", filepath,
+            "-vn", "-sn", "-dn",
+            "-af", "volumedetect",
+            "-f", "null", "-"
+        ]
+        res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, errors="replace", timeout=15)
+        output = res.stderr or ""
+        
+        mean_vol = None
+        max_vol = None
+        
+        mean_match = re.search(r"mean_volume:\s*([\-\d\.]+)\s*dB", output)
+        if mean_match:
+            mean_vol = float(mean_match.group(1))
+            
+        max_match = re.search(r"max_volume:\s*([\-\d\.]+)\s*dB", output)
+        if max_match:
+            max_vol = float(max_match.group(1))
+            
+        if mean_vol is not None or max_vol is not None:
+            return {
+                "mean_volume_db": mean_vol,
+                "max_volume_db": max_vol
+            }
+    except Exception as e:
+        print(f"Error detecting volume: {e}")
+    return None
+
 def get_video_info(filepath):
     if not os.path.exists(filepath):
         return None
@@ -319,13 +401,16 @@ def get_video_info(filepath):
         ctime = os.path.getctime(filepath)
         ctime_str = datetime.fromtimestamp(ctime).strftime('%Y-%m-%d %H:%M:%S')
         
+        vol_info = get_audio_volume_info(filepath) if has_audio else None
+
         return {
             "duration": duration,
             "size": size,
             "width": width,
             "height": height,
             "has_audio": has_audio,
-            "creation_time": ctime_str
+            "creation_time": ctime_str,
+            "volume_info": vol_info
         }
     except Exception as e:
         print(f"Error getting video info: {e}")
@@ -372,6 +457,239 @@ def phone_status():
         }), 403
     status = get_phone_status()
     return jsonify(status), 200 if status.get("success") else 400
+
+
+@app.route('/api/phone/video_evidence/list')
+def list_phone_video_evidence():
+    if SERVER_MODE or request.remote_addr not in {"127.0.0.1", "::1"}:
+        return jsonify({"success": False, "error": "该操作只能在连接手机的电脑本机使用。"}), 403
+
+    phone = get_phone_status()
+    if not phone.get("success"):
+        return jsonify(phone), 400
+
+    adb_path = phone["adb_path"]
+    serial = phone["serial"]
+    try:
+        all_paths = discover_phone_evidence_paths(adb_path, serial)
+        folder_counts = {}
+        for path in all_paths:
+            folder = path.rsplit('/', 1)[0]
+            folder_counts[folder] = folder_counts.get(folder, 0) + 1
+        folders = [
+            {
+                "path": folder,
+                "label": folder[len('/sdcard/'):].lstrip('/') or "手机存储",
+                "count": count
+            }
+            for folder, count in sorted(folder_counts.items(), key=lambda item: item[0].lower())
+        ]
+
+        requested_folder = request.args.get("folder", "").strip().rstrip('/')
+        valid_folders = set(folder_counts)
+        if requested_folder and requested_folder not in valid_folders:
+            return jsonify({"success": False, "error": "所选文件夹不存在，或其中没有本工具写入的视频。"}), 400
+        if requested_folder:
+            selected_folder = requested_folder
+        elif PHONE_EVIDENCE_DIR in valid_folders:
+            selected_folder = PHONE_EVIDENCE_DIR
+        else:
+            selected_folder = folders[0]["path"] if folders else ""
+
+        selected_paths = [
+            path for path in all_paths
+            if path.rsplit('/', 1)[0] == selected_folder
+        ]
+        videos = []
+        beijing_tz = timezone(timedelta(hours=8))
+        for remote_path in selected_paths:
+            name = remote_path.rsplit('/', 1)[-1]
+            media = query_phone_media_record(adb_path, serial, name)
+            size = None
+            try:
+                size = int(run_capture([
+                    adb_path, "-s", serial, "shell", "stat", "-c", "%s", remote_path
+                ], timeout=12).splitlines()[-1])
+            except (RuntimeError, ValueError):
+                pass
+
+            taken_ms = media["date_taken_ms"]
+            taken_text = None
+            if taken_ms is not None:
+                taken_text = datetime.fromtimestamp(
+                    taken_ms / 1000, tz=beijing_tz
+                ).strftime('%Y-%m-%d %H:%M:%S')
+            videos.append({
+                "name": name,
+                "phone_path": remote_path,
+                "size": size,
+                "gallery_time": taken_text,
+                "gallery_time_epoch_ms": taken_ms,
+                "media_id": media["id"]
+            })
+
+        videos.sort(key=lambda item: item["gallery_time_epoch_ms"] or 0, reverse=True)
+        return jsonify({
+            "success": True,
+            "videos": videos,
+            "count": len(videos),
+            "folders": folders,
+            "selected_folder": selected_folder,
+            "device": {
+                "serial": serial,
+                "model": phone.get("model")
+            }
+        })
+    except Exception as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+@app.route('/api/phone/video_evidence/update_gallery_time', methods=['POST'])
+def update_phone_video_evidence_gallery_time():
+    if SERVER_MODE or request.remote_addr not in {"127.0.0.1", "::1"}:
+        return jsonify({"success": False, "error": "该操作只能在连接手机的电脑本机使用。"}), 403
+
+    data = request.json or {}
+    display_name = str(data.get("name", "")).strip()
+    remote_path = str(data.get("phone_path", "")).strip().replace('\\', '/')
+    event_time = str(data.get("event_time", "")).strip()
+    if not data.get("confirmed"):
+        return jsonify({"success": False, "error": "请先确认新的相册时间。"}), 400
+    if not PHONE_EVIDENCE_NAME_RE.fullmatch(display_name):
+        return jsonify({"success": False, "error": "只能修改此前由本工具写入的视频。"}), 400
+    if remote_path.rsplit('/', 1)[-1] != display_name:
+        return jsonify({"success": False, "error": "视频路径与文件名不一致，请刷新列表后重试。"}), 400
+    try:
+        local_dt = datetime.strptime(event_time, '%Y-%m-%d %H:%M:%S')
+    except ValueError:
+        return jsonify({"success": False, "error": "时间格式必须为 YYYY-MM-DD HH:MM:SS。"}), 400
+
+    phone = get_phone_status()
+    if not phone.get("success"):
+        return jsonify(phone), 400
+
+    adb_path = phone["adb_path"]
+    serial = phone["serial"]
+    beijing_tz = timezone(timedelta(hours=8))
+    new_epoch_ms = int(local_dt.replace(tzinfo=beijing_tz).timestamp() * 1000)
+    try:
+        if remote_path not in set(discover_phone_evidence_paths(adb_path, serial)):
+            return jsonify({
+                "success": False,
+                "error": "所选视频已移动或不存在，请刷新文件夹和视频列表后重试。"
+            }), 404
+
+        before = query_phone_media_record(adb_path, serial, display_name)
+        if before["id"] is None:
+            return jsonify({
+                "success": False,
+                "error": "手机媒体库中没有找到该视频。请先在 OPPO 相册中打开一次后重试。"
+            }), 404
+
+        update_output = run_capture([
+            adb_path, "-s", serial, "shell", "content", "update",
+            "--uri", "content://media/external/video/media",
+            "--bind", f"datetaken:l:{new_epoch_ms}",
+            "--where", f"_id={before['id']}"
+        ], timeout=20)
+        after = query_phone_media_record(adb_path, serial, display_name)
+        verified = (
+            after["id"] == before["id"]
+            and after["date_taken_ms"] is not None
+            and abs(after["date_taken_ms"] - new_epoch_ms) <= 2000
+        )
+        if not verified:
+            return jsonify({
+                "success": False,
+                "error": "手机未确认新的相册时间，请解锁手机并重新连接后再试。",
+                "details": update_output
+            }), 500
+
+        previous_text = None
+        if before["date_taken_ms"] is not None:
+            previous_text = datetime.fromtimestamp(
+                before["date_taken_ms"] / 1000, tz=beijing_tz
+            ).strftime('%Y-%m-%d %H:%M:%S')
+        record = {
+            "record_type": "phone_gallery_display_time_adjustment",
+            "operation_time_beijing": datetime.now(beijing_tz).strftime('%Y-%m-%d %H:%M:%S'),
+            "phone_path": remote_path,
+            "media_id": before["id"],
+            "previous_gallery_time_beijing": previous_text,
+            "new_gallery_time_beijing": event_time,
+            "video_content_modified": False,
+            "device": {
+                "serial": serial,
+                "model": phone.get("model"),
+                "android": phone.get("android"),
+                "coloros": phone.get("coloros")
+            },
+            "verification": {
+                "gallery_time_verified": True,
+                "media_date_taken_epoch_ms": after["date_taken_ms"]
+            }
+        }
+        log_name = f"phone_gallery_time_{local_dt.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}.json"
+        log_path = os.path.join(EVIDENCE_LOG_FOLDER, log_name)
+        with open(log_path, "w", encoding="utf-8") as log_file:
+            json.dump(record, log_file, ensure_ascii=False, indent=2)
+
+        return jsonify({
+            "success": True,
+            "name": display_name,
+            "phone_path": remote_path,
+            "previous_gallery_time": previous_text,
+            "gallery_time": event_time,
+            "gallery_time_verified": True,
+            "video_content_modified": False,
+            "log_path": log_path
+        })
+    except Exception as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+@app.route('/api/phone/video_evidence/prepare_preview', methods=['POST'])
+def prepare_phone_video_evidence_preview():
+    if SERVER_MODE or request.remote_addr not in {"127.0.0.1", "::1"}:
+        return jsonify({"success": False, "error": "该操作只能在连接手机的电脑本机使用。"}), 403
+
+    data = request.json or {}
+    display_name = str(data.get("name", "")).strip()
+    remote_path = str(data.get("phone_path", "")).strip().replace('\\', '/')
+    if (
+        not PHONE_EVIDENCE_NAME_RE.fullmatch(display_name)
+        or remote_path.rsplit('/', 1)[-1] != display_name
+    ):
+        return jsonify({"success": False, "error": "视频选择已失效，请刷新列表后重试。"}), 400
+
+    phone = get_phone_status()
+    if not phone.get("success"):
+        return jsonify(phone), 400
+    adb_path = phone["adb_path"]
+    serial = phone["serial"]
+    preview_path = ""
+    try:
+        if remote_path not in set(discover_phone_evidence_paths(adb_path, serial)):
+            return jsonify({"success": False, "error": "视频已移动或不存在，请刷新列表。"}), 404
+        preview_path = make_preview_path(".mp4")
+        run_capture([
+            adb_path, "-s", serial, "pull", remote_path, preview_path
+        ], timeout=300)
+        if not os.path.isfile(preview_path) or os.path.getsize(preview_path) <= 0:
+            raise RuntimeError("手机视频读取失败，请保持手机解锁后重试。")
+        return jsonify({
+            "success": True,
+            "preview_path": preview_path,
+            "video_content_modified": False,
+            "phone_copy_created": False
+        })
+    except Exception as exc:
+        if preview_path and os.path.isfile(preview_path):
+            try:
+                os.remove(preview_path)
+            except OSError:
+                pass
+        return jsonify({"success": False, "error": str(exc)}), 500
 
 
 @app.route('/api/phone/open_installer', methods=['POST'])
@@ -919,31 +1237,60 @@ def boost_volume():
     is_preview = data.get('is_preview', False)
     
     if not require_existing_file(src_path):
-        return jsonify({"success": False, "error": f"源视频文件不存在: [{src_path}]"}), 400
-        
+        return jsonify({"success": False, "error": f"源文件不存在: [{src_path}]"}), 400
+
+    info = get_video_info(src_path) or {}
+    has_video = info.get('width', 0) > 0 and info.get('height', 0) > 0
+    src_ext = os.path.splitext(src_path)[1].lower()
+    if not src_ext:
+        src_ext = ".mp4" if has_video else ".mp3"
+
     if is_preview:
-        out_path = make_preview_path(".mp4")
+        out_path = make_preview_path(src_ext if has_video else ".mp3")
     elif SERVER_MODE or not out_path:
         out_dir = os.path.dirname(src_path) or os.getcwd()
-        base, ext = os.path.splitext(os.path.basename(src_path))
-        out_path = os.path.join(out_dir, f"{base}_boosted{ext}")
+        base = os.path.splitext(os.path.basename(src_path))[0]
+        out_ext = src_ext if has_video else (src_ext if src_ext in ['.mp3', '.wav', '.flac', '.m4a', '.aac'] else '.mp3')
+        out_path = os.path.join(out_dir, f"{base}_boosted{out_ext}")
 
     temp_dir = tempfile.mkdtemp(prefix="video_tool_vol_")
     try:
-        temp_out = os.path.join(temp_dir, "temp_out" + os.path.splitext(src_path)[1])
+        target_ext = os.path.splitext(out_path)[1].lower() or (src_ext if has_video else ".mp3")
+        temp_out = os.path.join(temp_dir, f"temp_out{target_ext}")
         cmd = ["ffmpeg", "-y", "-i", src_path]
         
         if is_preview:
             cmd.extend(["-t", "10"])
             
-        cmd.extend([
-            "-c:v", "copy",
-            "-af", f"volume={volume_db}dB,alimiter=limit=0.99",
-            "-c:a", "aac", "-b:a", "192k",
-            temp_out
-        ])
+        # Use a longer release time (100ms) to prevent low-frequency distortion (crackling) and limit to -0.5dB to avoid intersample clipping.
+        af_filter = f"volume={volume_db}dB,alimiter=limit=-0.5dB:attack=2:release=100"
+
+        if has_video:
+            cmd.extend([
+                "-c:v", "copy",
+                "-af", af_filter,
+                "-c:a", "aac", "-b:a", "256k",
+                temp_out
+            ])
+        else:
+            if target_ext == '.mp3':
+                cmd.extend([
+                    "-vn",
+                    "-af", af_filter,
+                    "-c:a", "libmp3lame", "-b:a", "320k", "-ar", "44100",
+                    temp_out
+                ])
+            else:
+                cmd.extend([
+                    "-vn",
+                    "-af", af_filter,
+                    "-b:a", "320k",
+                    temp_out
+                ])
         
         run_cmd(cmd)
+        out_parent = os.path.dirname(os.path.abspath(out_path))
+        os.makedirs(out_parent, exist_ok=True)
         shutil.copy2(temp_out, out_path)
         
         if not is_preview:
@@ -951,12 +1298,16 @@ def boost_volume():
             if orig_info and orig_info.get('creation_time'):
                 modify_creation_time(out_path, orig_info['creation_time'])
             
-        return jsonify({"success": True, "out_path": out_path, "is_preview": is_preview})
+        return jsonify({
+            "success": True, 
+            "out_path": out_path, 
+            "is_preview": is_preview,
+            "has_video": has_video
+        })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
-
 
 @app.route('/api/open_location', methods=['POST'])
 def open_location():
