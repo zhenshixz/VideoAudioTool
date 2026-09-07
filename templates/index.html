@@ -145,6 +145,76 @@
             /* Button groups wrap */
             div[style*="display: flex; gap: 1rem;"] { flex-wrap: wrap; }
             div[style*="display: flex; gap: 0.5rem;"] { flex-wrap: wrap; }
+            #panelVolume div[style*="display: flex; gap: 0.75rem;"] { flex-wrap: wrap; }
+        }
+
+        /* Video volume booster: intentionally scoped to avoid affecting other modules. */
+        .volume-shell { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.25rem; box-shadow: var(--shadow); }
+        .volume-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-bottom: 0.9rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); }
+        .volume-heading h2 { display: flex; align-items: center; gap: 0.55rem; min-width: 0; font-size: 1.05rem; line-height: 1.4; }
+        .volume-heading p { color: var(--text-secondary); font-size: 0.78rem; text-align: right; }
+        .volume-upload-zone { min-height: 270px; border: 1.5px dashed #b9c8df; border-radius: 8px; background: #f8fafc; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.65rem; padding: 1.5rem; text-align: center; cursor: pointer; transition: border-color 0.2s, background-color 0.2s; }
+        .volume-upload-zone:hover, .volume-upload-zone.is-dragging { border-color: var(--primary); background: #eff6ff; }
+        .volume-upload-icon { width: 48px; height: 48px; border-radius: 8px; display: grid; place-items: center; background: #dbeafe; color: var(--primary); font-size: 1.6rem; font-weight: 700; }
+        .volume-upload-zone h3 { font-size: 1rem; }
+        .volume-upload-zone p, .volume-upload-zone small { color: var(--text-secondary); }
+        .volume-upload-zone small { font-size: 0.75rem; }
+        .volume-local-path { display: flex; gap: 0.5rem; margin-top: 0.8rem; }
+        .volume-editor { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.85fr); gap: 1.5rem; align-items: start; }
+        .volume-video-panel { min-width: 0; }
+        .volume-video-frame { width: 100%; aspect-ratio: 16 / 9; max-height: 470px; background: #05070a; border-radius: 8px; overflow: hidden; display: grid; place-items: center; }
+        .volume-video-frame video { display: none; width: 100%; height: 100%; object-fit: contain; }
+        .volume-file-line { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-top: 0.85rem; }
+        .volume-file-copy { min-width: 0; display: flex; flex-direction: column; gap: 0.25rem; }
+        .volume-file-copy strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.9rem; }
+        .volume-file-copy span { color: var(--text-secondary); font-size: 0.78rem; }
+        .volume-text-btn { flex: 0 0 auto; border: 0; background: transparent; color: var(--primary); min-height: 40px; padding: 0.4rem; font-weight: 600; cursor: pointer; }
+        .volume-preview-note { display: none; justify-content: space-between; align-items: center; gap: 0.75rem; margin-top: 0.7rem; padding: 0.6rem 0.75rem; border-radius: 8px; background: #eff6ff; color: #415574; font-size: 0.78rem; }
+        .volume-controls { min-width: 0; }
+        .volume-control-title { display: flex; justify-content: space-between; align-items: baseline; gap: 0.75rem; margin-bottom: 0.9rem; }
+        .volume-control-title span { font-weight: 700; }
+        .volume-control-title strong { color: var(--primary); font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+        .volume-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; }
+        .volume-preset { min-height: 42px; border: 1px solid var(--border-color); border-radius: 8px; background: white; color: #475569; font-weight: 700; cursor: pointer; }
+        .volume-preset.active { border-color: var(--primary); background: #eff6ff; color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
+        .volume-range-row { display: grid; grid-template-columns: minmax(0, 1fr) 78px; gap: 0.75rem; align-items: center; margin-top: 1rem; }
+        .volume-range-row input[type="range"] { width: 100%; accent-color: var(--primary); }
+        .volume-number { width: 78px; height: 42px; border: 1px solid var(--border-color); border-radius: 8px; background: white; padding: 0 0.45rem; text-align: center; font: inherit; font-variant-numeric: tabular-nums; }
+        .volume-hint { margin: 0.65rem 0 1rem; color: var(--text-secondary); font-size: 0.75rem; line-height: 1.6; }
+        .volume-output-settings { margin: 0.9rem 0; padding-top: 0.9rem; border-top: 1px solid var(--border-color); }
+        .volume-output-settings label { display: block; margin-bottom: 0.4rem; font-size: 0.78rem; font-weight: 600; }
+        .volume-output-row { display: flex; gap: 0.5rem; }
+        .volume-actions { display: grid; gap: 0.65rem; }
+        .volume-actions .btn { width: 100%; min-height: 46px; }
+        .volume-progress { display: none; margin-top: 1rem; }
+        .volume-progress-line { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 0.45rem; color: var(--text-secondary); font-size: 0.78rem; }
+        .volume-progress-track { height: 7px; border-radius: 99px; overflow: hidden; background: #e2e8f0; }
+        .volume-progress-bar { display: block; width: 0; height: 100%; background: var(--primary); transition: width 0.15s; }
+        .volume-notice { display: none; margin-top: 1rem; padding: 0.75rem 0.85rem; border: 1px solid; border-radius: 8px; font-size: 0.82rem; line-height: 1.55; white-space: pre-wrap; }
+        .volume-notice.success { display: block; border-color: #bbf7d0; background: #f0fdf4; color: #166534; }
+        .volume-notice.info { display: block; border-color: #bfdbfe; background: #eff6ff; color: #1e40af; }
+        .volume-notice.error { display: block; border-color: #fecaca; background: #fef2f2; color: #991b1b; }
+        .volume-result { display: none; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1rem; padding: 0.9rem; border: 1px solid #bbf7d0; border-radius: 8px; background: #f0fdf4; }
+        .volume-result-copy { min-width: 0; display: flex; flex-direction: column; gap: 0.2rem; }
+        .volume-result-copy strong { color: #166534; }
+        .volume-result-copy span { overflow-wrap: anywhere; color: var(--text-secondary); font-size: 0.75rem; }
+        .volume-result-actions { display: flex; flex: 0 0 auto; gap: 0.5rem; }
+        .volume-shell button:disabled, .volume-shell input:disabled { cursor: wait; opacity: 0.62; }
+
+        @media (max-width: 900px) {
+            .volume-editor { grid-template-columns: 1fr; gap: 1.1rem; }
+        }
+
+        @media (max-width: 600px) {
+            .volume-shell { padding: 0.85rem; }
+            .volume-heading { align-items: flex-start; flex-direction: column; gap: 0.35rem; }
+            .volume-heading p { text-align: left; }
+            .volume-upload-zone { min-height: 230px; padding: 1rem; }
+            .volume-presets { grid-template-columns: repeat(2, 1fr); }
+            .volume-file-line, .volume-result { align-items: stretch; flex-direction: column; }
+            .volume-result-actions { width: 100%; }
+            .volume-result-actions .btn { flex: 1; }
+            .volume-preview-note { align-items: flex-start; flex-direction: column; }
         }
     </style>
 </head>
@@ -207,68 +277,95 @@
         <!-- 扩大音视频音量模块 -->
         <div class="module-panel" id="panelVolume" style="display: none; flex-direction: column; gap: 1.5rem; width: 100%;">
             
-            <!-- 第一部分：视频音量放大 -->
-            <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.25rem; box-shadow: var(--shadow);">
-                <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 0.75rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color);">
-                    <div style="font-size: 1.05rem; font-weight: 700; display: flex; align-items: center; gap: 0.5rem; color: var(--text-primary);">
-                        <span>🎬 第一部分：扩大视频音量</span>
-                        <span class="badge badge-blue" style="margin-left: 0.5rem;">画面无损拷贝 + 音频无损压限</span>
+            <!-- 第一部分：视频音量放大（复用已验证的手机端流程，不含付款逻辑） -->
+            <section class="volume-shell" aria-labelledby="volumeModuleTitle">
+                <div class="volume-heading">
+                    <h2 id="volumeModuleTitle"><span aria-hidden="true">🎬</span> 第一部分：扩大视频音量</h2>
+                    <p>画面保持原样，仅增强音轨并限制过高峰值</p>
+                </div>
+
+                <div id="volumeEmptyState">
+                    <div id="volumeUploadZone" class="volume-upload-zone" role="button" tabindex="0"
+                         onclick="triggerVolumeUpload()" onkeydown="handleVolumeUploadKey(event)"
+                         ondragenter="handleVolumeDrag(event, true)" ondragover="handleVolumeDrag(event, true)"
+                         ondragleave="handleVolumeDrag(event, false)" ondrop="handleVolumeDrop(event)">
+                        <div class="volume-upload-icon" aria-hidden="true">↑</div>
+                        <h3>选择需要增强音量的视频</h3>
+                        <p id="volSrcPlaceholder">点击选择，或将视频拖到这里</p>
+                        <button class="btn btn-primary" type="button" onclick="event.stopPropagation(); triggerVolumeUpload()">选择视频</button>
+                        <small>支持 MP4、MOV 等常见视频格式，视频必须带有音轨</small>
+                    </div>
+                    <div class="volume-local-path" id="volumeLocalPathRow">
+                        <input type="text" id="volSrcPath" placeholder="也可以输入电脑上的视频完整路径" onchange="loadVolumeVideoFromPath()">
+                        <button class="btn btn-secondary" type="button" onclick="triggerVolumeUpload()">浏览/上传</button>
                     </div>
                 </div>
 
-                <div class="grid-2">
-                    <div class="card" style="border: none; padding: 0; box-shadow: none;">
-                        <div class="card-header" style="border-bottom: none; padding-bottom: 0.25rem;">
-                            <div class="card-title">1. 选择需要扩大音量的视频</div>
+                <input type="file" id="volSrcFileInput" accept="video/*,.mp4,.mov,.m4v,.webm,.avi,.mkv" style="display: none;" onchange="handleVolumeFileSelection(event)">
+
+                <div class="volume-editor" id="volumeEditor" style="display: none;">
+                    <div class="volume-video-panel">
+                        <div class="volume-video-frame">
+                            <video id="volSrcVideo" controls playsinline preload="metadata"></video>
                         </div>
-                        <div class="file-input-group">
-                            <input type="text" id="volSrcPath" placeholder="输入视频本地路径，或点击上传..." onchange="loadVideoInfo('volSrc')">
-                            <button class="btn btn-secondary" onclick="triggerUpload('volSrc')">浏览/上传</button>
-                            <input type="file" id="volSrcFileInput" accept="video/*" style="display: none;" onchange="handleFileUpload('volSrc')">
+                        <div class="volume-file-line">
+                            <div class="volume-file-copy">
+                                <strong id="volumeFileName">已选择视频</strong>
+                                <span id="volSrcInfoBox">正在读取视频信息...</span>
+                            </div>
+                            <button class="volume-text-btn" type="button" onclick="resetVolumeSource()">更换视频</button>
                         </div>
-                        <div class="video-container" style="height: 240px; margin-top: 0.5rem;">
-                            <video id="volSrcVideo" controls style="display: none;"></video>
-                            <div class="video-placeholder" id="volSrcPlaceholder">选择或拖入视频预览</div>
+                        <div class="volume-preview-note" id="volumePreviewNote">
+                            <span>当前播放的是前10秒增强预览</span>
+                            <button class="volume-text-btn" type="button" onclick="showVolumeOriginal()">查看原视频</button>
                         </div>
-                        <div id="volSrcInfoBox" style="display: none; width: 100%;"></div>
                     </div>
 
-                    <div class="card" style="border: none; padding: 0; box-shadow: none; justify-content: space-between;">
-                        <div>
-                            <div class="card-header" style="border-bottom: none; padding-bottom: 0.25rem;">
-                                <div class="card-title" style="color: var(--primary);">2. 调节视频音量参数</div>
-                            </div>
-                            <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 0.25rem;">
-                                <div class="time-input-box">
-                                    <label style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 600;">
-                                        <span>拖动调节音量增益 (分贝)</span>
-                                        <span id="volDbText" style="color: var(--danger);">+10 dB (增大)</span>
-                                    </label>
-                                    <input type="range" id="volDbSlider" min="-20" max="30" step="1" value="10" style="width: 100%; margin-top: 0.5rem; cursor: pointer;" oninput="onVolDbChange()">
-                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">🛡️ 已启用智能 Limiter 压限算法：自动防止调大后破音与爆音</div>
-                                </div>
-                                <div class="time-input-box">
-                                    <label style="font-size: 0.85rem; font-weight: 600;">导出保存位置 (留空则保存在原视频目录下)</label>
-                                    <div style="display: flex; gap: 0.5rem; margin-top: 0.25rem;">
-                                        <input type="text" id="volOutDir" placeholder="点击右侧浏览选择文件夹...">
-                                        <button class="btn btn-secondary" onclick="browseFolderForVol()">浏览...</button>
-                                    </div>
-                                </div>
+                    <div class="volume-controls">
+                        <div class="volume-control-title">
+                            <span>音量增强</span>
+                            <strong id="volDbText">+12 dB</strong>
+                        </div>
+                        <div class="volume-presets" aria-label="常用音量增益">
+                            <button class="volume-preset" type="button" data-volume-db="6" onclick="setVolumeGain(6)">+6 dB</button>
+                            <button class="volume-preset active" type="button" data-volume-db="12" onclick="setVolumeGain(12)">+12 dB</button>
+                            <button class="volume-preset" type="button" data-volume-db="18" onclick="setVolumeGain(18)">+18 dB</button>
+                            <button class="volume-preset" type="button" data-volume-db="24" onclick="setVolumeGain(24)">+24 dB</button>
+                        </div>
+                        <div class="volume-range-row">
+                            <input type="range" id="volDbSlider" min="0" max="30" step="1" value="12" aria-label="音量增益" oninput="syncVolumeGain(this.value)">
+                            <input class="volume-number" type="number" id="volDbNumber" min="0" max="30" step="1" value="12" aria-label="精确输入音量增益" onchange="syncVolumeGain(this.value)" oninput="syncVolumeGain(this.value, false)">
+                        </div>
+                        <p class="volume-hint">建议先从 +12 dB 开始。数值过高也会放大环境底噪，处理后请同时保留原始视频。</p>
+
+                        <div class="volume-output-settings" id="volumeOutputSettings">
+                            <label for="volOutDir">电脑导出文件夹（留空则保存在原视频目录）</label>
+                            <div class="volume-output-row">
+                                <input type="text" id="volOutDir" placeholder="选择后会记住上次文件夹">
+                                <button class="btn btn-secondary" type="button" onclick="browseFolderForVol()">浏览...</button>
                             </div>
                         </div>
 
-                        <div style="display: flex; gap: 0.75rem; padding-top: 1rem; margin-top: 1rem; border-top: 1px solid var(--border-color);">
-                            <button class="btn btn-secondary" onclick="boostVolume(true)" style="flex: 1; padding: 0.75rem; font-weight: 600;">
-                                👀 预览前10秒效果
-                            </button>
-                            <button class="btn btn-primary" onclick="boostVolume(false)" style="flex: 1; padding: 0.75rem; font-weight: 600;">
-                                ⚡ 一键导出视频
-                            </button>
-                            <button class="btn btn-secondary" onclick="openTargetLocation('volume')" title="打开文件目录">📂</button>
+                        <div class="volume-actions">
+                            <button class="btn btn-secondary" id="volumePreviewBtn" type="button" onclick="boostVolume(true)">试听前10秒增强效果</button>
+                            <button class="btn btn-primary" id="volumeExportBtn" type="button" onclick="boostVolume(false)">增强并导出完整视频</button>
                         </div>
                     </div>
                 </div>
-            </div>
+
+                <div class="volume-progress" id="volumeUploadProgress">
+                    <div class="volume-progress-line"><span>正在上传视频</span><strong id="volumeUploadPercent">0%</strong></div>
+                    <div class="volume-progress-track"><i class="volume-progress-bar" id="volumeUploadBar"></i></div>
+                </div>
+                <div class="volume-notice" id="volumeNotice" role="status"></div>
+                <div class="volume-result" id="volumeResult">
+                    <div class="volume-result-copy">
+                        <strong>完整视频已经处理完成</strong>
+                        <span id="volumeResultPath"></span>
+                    </div>
+                    <div class="volume-result-actions" id="volumeResultActions"></div>
+                </div>
+            </section>
 
             <!-- 第二部分：上传 MP3 音频无损扩大音量 -->
             <div style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1.25rem; box-shadow: var(--shadow);">
@@ -838,6 +935,13 @@
     <script>
         var volSrcVolumeData = null;
         var audioVolSrcVolumeData = null;
+        let volumeSourcePath = '';
+        let volumeOriginalUrl = '';
+        let volumePreviewPath = '';
+        let volumeResultPath = '';
+        let volumeResultName = '';
+        let volumeSourceInfo = null;
+        let volumeBusy = '';
         // Custom Dual Range Slider Class
         class DualSlider {
             constructor(containerId, onUpdate) {
@@ -1996,20 +2100,249 @@
             } catch (err) { hideLoading(); alert("网络错误或系统异常: " + err.message); }
         }
 
-        function onVolDbChange() {
-            const val = parseInt(document.getElementById('volDbSlider').value);
-            const textEl = document.getElementById('volDbText');
-            if (val > 0) {
-                textEl.innerText = `+${val} dB (增大)`;
-                textEl.style.color = 'var(--danger)';
-            } else if (val < 0) {
-                textEl.innerText = `${val} dB (减小)`;
-                textEl.style.color = 'var(--warning)';
-            } else {
-                textEl.innerText = `0 dB (原音量)`;
-                textEl.style.color = 'var(--primary)';
+        function triggerVolumeUpload() {
+            if (!volumeBusy) document.getElementById('volSrcFileInput').click();
+        }
+
+        function handleVolumeUploadKey(event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                triggerVolumeUpload();
             }
-            updateVolEst('video', val);
+        }
+
+        function handleVolumeDrag(event, active) {
+            event.preventDefault();
+            event.stopPropagation();
+            document.getElementById('volumeUploadZone').classList.toggle('is-dragging', active);
+        }
+
+        function handleVolumeDrop(event) {
+            handleVolumeDrag(event, false);
+            const file = event.dataTransfer && event.dataTransfer.files ? event.dataTransfer.files[0] : null;
+            if (file) uploadVolumeFile(file);
+        }
+
+        function handleVolumeFileSelection(event) {
+            const file = event.target.files && event.target.files[0];
+            if (file) uploadVolumeFile(file);
+            event.target.value = '';
+        }
+
+        function setVolumeNotice(message = '', type = '') {
+            const notice = document.getElementById('volumeNotice');
+            notice.textContent = message;
+            notice.className = `volume-notice${type ? ` ${type}` : ''}`;
+        }
+
+        function setVolumeBusy(mode = '') {
+            volumeBusy = mode;
+            const previewBtn = document.getElementById('volumePreviewBtn');
+            const exportBtn = document.getElementById('volumeExportBtn');
+            const disabled = Boolean(mode);
+            if (previewBtn) {
+                previewBtn.disabled = disabled;
+                previewBtn.textContent = mode === 'preview' ? '正在生成10秒预览...' : '试听前10秒增强效果';
+            }
+            if (exportBtn) {
+                exportBtn.disabled = disabled;
+                exportBtn.textContent = mode === 'export' ? '正在处理完整视频...' : '增强并导出完整视频';
+            }
+            document.querySelectorAll('.volume-preset, #volDbSlider, #volDbNumber').forEach(el => {
+                el.disabled = disabled;
+            });
+        }
+
+        function formatVolumeDuration(seconds) {
+            const total = Math.max(0, Math.round(Number(seconds) || 0));
+            const hours = Math.floor(total / 3600);
+            const minutes = Math.floor((total % 3600) / 60);
+            const rest = total % 60;
+            return hours > 0
+                ? `${hours}:${String(minutes).padStart(2, '0')}:${String(rest).padStart(2, '0')}`
+                : `${minutes}:${String(rest).padStart(2, '0')}`;
+        }
+
+        function formatVolumeSize(bytes) {
+            const size = Number(bytes) || 0;
+            if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+            if (size < 1024 * 1024 * 1024) return `${(size / 1024 / 1024).toFixed(1)} MB`;
+            return `${(size / 1024 / 1024 / 1024).toFixed(2)} GB`;
+        }
+
+        function isValidVolumeVideo(info) {
+            return info && Number(info.width) > 0 && Number(info.height) > 0 && info.has_audio === true;
+        }
+
+        function showVolumeSource(path, info, displayName = '') {
+            if (!isValidVolumeVideo(info)) {
+                throw new Error('请选择带有音轨的视频文件。');
+            }
+
+            volumeSourcePath = path;
+            volumeSourceInfo = info;
+            volumeOriginalUrl = `/api/stream?path=${encodeURIComponent(path)}&t=${Date.now()}`;
+            document.getElementById('volSrcPath').value = path;
+            document.getElementById('volumeEmptyState').style.display = 'none';
+            document.getElementById('volumeEditor').style.display = 'grid';
+            document.getElementById('volumeResult').style.display = 'none';
+            const player = document.getElementById('volSrcVideo');
+            player.src = volumeOriginalUrl;
+            player.style.display = 'block';
+            player.load();
+
+            const fallbackName = path.split(/[\\/]/).pop() || '已选择视频';
+            document.getElementById('volumeFileName').textContent = displayName || fallbackName;
+            document.getElementById('volSrcInfoBox').textContent = `${formatVolumeDuration(info.duration)} · ${formatVolumeSize(info.size)} · ${info.width}×${info.height}`;
+            document.getElementById('volumePreviewNote').style.display = 'none';
+            volumeResultPath = '';
+            volumeResultName = '';
+            setVolumeNotice('视频已就绪，可以先试听前10秒增强效果。', 'success');
+        }
+
+        async function deleteVolumePreview(path) {
+            if (!path) return;
+            try {
+                await fetch('/api/delete_preview', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filepath: path })
+                });
+            } catch (_) {}
+        }
+
+        async function showVolumeOriginal() {
+            const oldPreview = volumePreviewPath;
+            volumePreviewPath = '';
+            const player = document.getElementById('volSrcVideo');
+            player.pause();
+            player.src = volumeOriginalUrl;
+            player.load();
+            document.getElementById('volumePreviewNote').style.display = 'none';
+            await deleteVolumePreview(oldPreview);
+        }
+
+        async function resetVolumeSource() {
+            const oldPreview = volumePreviewPath;
+            volumePreviewPath = '';
+            volumeSourcePath = '';
+            volumeOriginalUrl = '';
+            volumeResultPath = '';
+            volumeResultName = '';
+            volumeSourceInfo = null;
+            const player = document.getElementById('volSrcVideo');
+            player.pause();
+            player.removeAttribute('src');
+            player.load();
+            document.getElementById('volSrcPath').value = '';
+            document.getElementById('volumeEditor').style.display = 'none';
+            document.getElementById('volumeEmptyState').style.display = 'block';
+            document.getElementById('volumePreviewNote').style.display = 'none';
+            document.getElementById('volumeResult').style.display = 'none';
+            setVolumeNotice();
+            await deleteVolumePreview(oldPreview);
+        }
+
+        async function loadVolumeVideoFromPath() {
+            const path = document.getElementById('volSrcPath').value.trim();
+            if (!path || volumeBusy) return;
+            setVolumeBusy('load');
+            setVolumeNotice('正在读取电脑上的视频信息...', 'info');
+            try {
+                const response = await fetch('/api/video_info', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ filepath: path, quick: true })
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.error || '无法读取视频。');
+                await showVolumeOriginal();
+                showVolumeSource(path, data.info);
+            } catch (error) {
+                setVolumeNotice(error.message || '无法读取视频。', 'error');
+            } finally {
+                setVolumeBusy();
+            }
+        }
+
+        function uploadVolumeFile(file) {
+            if (volumeBusy) return;
+            if (!file || (!file.type.startsWith('video/') && !/\.(mp4|mov|m4v|webm|avi|mkv)$/i.test(file.name))) {
+                setVolumeNotice('请选择 MP4、MOV 等常见视频文件。', 'error');
+                return;
+            }
+
+            const oldPreview = volumePreviewPath;
+            volumePreviewPath = '';
+            deleteVolumePreview(oldPreview);
+            document.getElementById('volumeResult').style.display = 'none';
+            setVolumeNotice();
+            setVolumeBusy('upload');
+            const progress = document.getElementById('volumeUploadProgress');
+            const percent = document.getElementById('volumeUploadPercent');
+            const bar = document.getElementById('volumeUploadBar');
+            progress.style.display = 'block';
+            percent.textContent = '0%';
+            bar.style.width = '0%';
+
+            const form = new FormData();
+            form.append('file', file);
+            form.append('quick', '1');
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/api/upload');
+            xhr.upload.onprogress = event => {
+                if (!event.lengthComputable) return;
+                const value = Math.round(event.loaded * 100 / event.total);
+                percent.textContent = `${value}%`;
+                bar.style.width = `${value}%`;
+            };
+            xhr.onload = () => {
+                progress.style.display = 'none';
+                setVolumeBusy();
+                let data;
+                try {
+                    data = JSON.parse(xhr.responseText);
+                } catch (_) {
+                    data = { success: false, error: '服务器返回了无法识别的结果。' };
+                }
+                if (xhr.status < 200 || xhr.status >= 300 || !data.success) {
+                    setVolumeNotice(data.error || '视频上传失败。', 'error');
+                    return;
+                }
+                try {
+                    showVolumeSource(data.filepath, data.info, file.name);
+                } catch (error) {
+                    document.getElementById('volSrcPath').value = '';
+                    setVolumeNotice(error.message, 'error');
+                }
+            };
+            xhr.onerror = () => {
+                progress.style.display = 'none';
+                setVolumeBusy();
+                setVolumeNotice('网络中断，视频上传失败。', 'error');
+            };
+            xhr.send(form);
+        }
+
+        function syncVolumeGain(rawValue, normalizeInput = true) {
+            if (!normalizeInput && rawValue === '') return;
+            let value = Number(rawValue);
+            if (!Number.isFinite(value)) value = 12;
+            value = Math.max(0, Math.min(30, Math.round(value)));
+            document.getElementById('volDbSlider').value = value;
+            document.getElementById('volDbNumber').value = value;
+            document.getElementById('volDbText').textContent = `+${value} dB`;
+            document.querySelectorAll('.volume-preset').forEach(button => {
+                button.classList.toggle('active', Number(button.dataset.volumeDb) === value);
+            });
+        }
+
+        function setVolumeGain(value) {
+            syncVolumeGain(value);
+        }
+
+        function onVolDbChange() {
+            syncVolumeGain(document.getElementById('volDbSlider').value);
         }
 
         function updateVolEst(type, boostDb) {
@@ -2050,45 +2383,123 @@
             `;
         }
 
+        function renderVolumeResult() {
+            const result = document.getElementById('volumeResult');
+            const pathText = document.getElementById('volumeResultPath');
+            const actions = document.getElementById('volumeResultActions');
+            const localPC = !isRemote() && !isMobileDevice();
+            pathText.textContent = localPC
+                ? `已保存到：${volumeResultPath}`
+                : '请点击右侧按钮保存，建议不要覆盖原始视频。';
+            actions.innerHTML = '';
+
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'btn btn-success';
+            button.textContent = localPC ? '打开文件位置' : (isMobileDevice() ? '下载保存到手机' : '保存视频');
+            button.onclick = saveVolumeResult;
+            actions.appendChild(button);
+            result.style.display = 'flex';
+        }
+
+        async function saveVolumeResult() {
+            if (!volumeResultPath) return;
+            if (!isRemote() && !isMobileDevice()) {
+                openLocationDirect(volumeResultPath);
+                return;
+            }
+
+            const url = `/api/download?path=${encodeURIComponent(volumeResultPath)}`;
+            if (!isMobileDevice() && 'showSaveFilePicker' in window) {
+                try {
+                    const extension = (volumeResultName.match(/\.[^.]+$/) || ['.mp4'])[0].toLowerCase();
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: volumeResultName || 'boosted_video.mp4',
+                        types: [{ description: '视频文件', accept: { 'video/*': [extension] } }]
+                    });
+                    const response = await fetch(url);
+                    if (!response.ok || !response.body) throw new Error('下载失败。');
+                    const writable = await handle.createWritable();
+                    await response.body.pipeTo(writable);
+                    setVolumeNotice('视频已保存到你选择的文件夹。', 'success');
+                    return;
+                } catch (error) {
+                    if (error && error.name === 'AbortError') return;
+                }
+            }
+
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = volumeResultName || 'boosted_video.mp4';
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+        }
+
         async function boostVolume(isPreview = false) {
-            const filepath = document.getElementById('volSrcPath').value.trim();
-            const volDb = parseFloat(document.getElementById('volDbSlider').value) || 0.0;
-            let outPath = "";
-            const outDir = document.getElementById('volOutDir').value.trim();
-            if (outDir) {
+            if (volumeBusy) return;
+            const filepath = volumeSourcePath || document.getElementById('volSrcPath').value.trim();
+            if (!filepath || !volumeSourceInfo) {
+                setVolumeNotice('请先选择或上传需要增强音量的视频。', 'error');
+                return;
+            }
+
+            const volDb = Number(document.getElementById('volDbSlider').value);
+            let outPath = '';
+            const localPC = !isRemote() && !isMobileDevice();
+            const outDir = localPC ? document.getElementById('volOutDir').value.trim() : '';
+            if (!isPreview && outDir) {
                 const filename = filepath.split(/[\\/]/).pop();
                 const match = filename.match(/(.*)(\.[^.]+)$/);
                 const base = match ? match[1] : filename;
-                const ext = match ? match[2] : '';
-                outPath = outDir + '/' + base + '_boosted' + ext;
+                const ext = match ? match[2] : '.mp4';
+                outPath = `${outDir.replace(/[\\/]+$/, '')}/${base}_boosted${ext}`;
                 localStorage.setItem('lastOutDir', outDir);
             }
-            
-            if (!filepath) { alert("请选择或上传需要扩大音量的视频文件！"); return; }
-            
-            showLoading(isPreview ? "正在为您生成前10秒的极速预览，请稍候..." : "正在扩大全量视频音量，这可能需要一会儿...");
+
+            if (isPreview && volumePreviewPath) await showVolumeOriginal();
+            setVolumeBusy(isPreview ? 'preview' : 'export');
+            setVolumeNotice(isPreview ? '正在生成前10秒增强预览...' : '正在处理完整视频，请保持页面打开。', 'info');
+            if (!isPreview) document.getElementById('volumeResult').style.display = 'none';
+
             try {
-                const res = await fetch('/api/boost_volume', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ src_path: filepath, volume_db: volDb, out_path: outPath, is_preview: isPreview })
+                const response = await fetch('/api/boost_volume', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        src_path: filepath,
+                        volume_db: volDb,
+                        out_path: outPath,
+                        is_preview: isPreview
+                    })
                 });
-                const data = await res.json();
-                hideLoading();
-                if (data.success) {
-                    if (isPreview) {
-                        openPreviewMedia(
-                            'volume',
-                            `/api/stream?path=${encodeURIComponent(data.out_path)}&t=${new Date().getTime()}`,
-                            'video',
-                            data.out_path
-                        );
-                    } else {
-                        showResultModal('🔊 视频音量扩大成功', data.out_path, '已为您保留原始创建时间，并通过 Limiter 防破音压限。');
-                    }
-                } else {
-                    alert("处理失败: " + data.error);
+                let data;
+                try {
+                    data = await response.json();
+                } catch (_) {
+                    data = { success: false, error: '服务器返回了无法识别的结果。' };
                 }
-            } catch (err) { hideLoading(); alert("网络错误或系统异常: " + err.message); }
+                if (!response.ok || !data.success) throw new Error(data.error || '视频处理失败。');
+
+                if (isPreview) {
+                    volumePreviewPath = data.out_path;
+                    const player = document.getElementById('volSrcVideo');
+                    player.src = `/api/stream?path=${encodeURIComponent(data.out_path)}&t=${Date.now()}`;
+                    player.load();
+                    player.play().catch(() => {});
+                    document.getElementById('volumePreviewNote').style.display = 'flex';
+                    setVolumeNotice(`已生成前10秒 +${volDb} dB 增强预览。`, 'success');
+                } else {
+                    volumeResultPath = data.out_path;
+                    volumeResultName = data.out_path.split(/[\\/]/).pop() || 'boosted_video.mp4';
+                    renderVolumeResult();
+                    setVolumeNotice('完整视频处理完成，画面未重新编码。', 'success');
+                }
+            } catch (error) {
+                setVolumeNotice(error.message || '视频处理失败。', 'error');
+            } finally {
+                setVolumeBusy();
+            }
         }
 
         
@@ -2326,11 +2737,15 @@
                     if (el) el.value = lastDir;
                 });
             }
+            const localPC = !isRemote() && !isMobileDevice();
+            document.getElementById('volumeLocalPathRow').style.display = localPC ? 'flex' : 'none';
+            document.getElementById('volumeOutputSettings').style.display = localPC ? 'block' : 'none';
+            syncVolumeGain(document.getElementById('volDbSlider').value);
         });
 
         window.addEventListener('beforeunload', () => {
             if (!navigator.sendBeacon) return;
-            [currentPreviewPath, phoneEvidencePreviewPath].filter(Boolean).forEach(filepath => {
+            [currentPreviewPath, phoneEvidencePreviewPath, volumePreviewPath].filter(Boolean).forEach(filepath => {
                 const payload = new Blob(
                     [JSON.stringify({ filepath })],
                     { type: 'application/json' }

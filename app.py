@@ -419,7 +419,7 @@ def get_audio_volume_info(filepath):
         print(f"Error detecting volume: {e}")
     return None
 
-def get_video_info(filepath):
+def get_video_info(filepath, include_volume=True):
     if not os.path.exists(filepath):
         return None
     try:
@@ -444,7 +444,7 @@ def get_video_info(filepath):
         ctime = os.path.getctime(filepath)
         ctime_str = datetime.fromtimestamp(ctime).strftime('%Y-%m-%d %H:%M:%S')
         
-        vol_info = get_audio_volume_info(filepath) if has_audio else None
+        vol_info = get_audio_volume_info(filepath) if has_audio and include_volume else None
 
         return {
             "duration": duration,
@@ -1057,7 +1057,7 @@ def video_info():
     filepath = data.get('filepath', '').strip().strip('"').strip("'")
     if not require_existing_file(filepath):
         return jsonify({"success": False, "error": "文件不存在或无权访问。"}), 400
-    info = get_video_info(filepath)
+    info = get_video_info(filepath, include_volume=not data.get('quick', False))
     if info:
         return jsonify({"success": True, "info": info})
     return jsonify({"success": False, "error": "无法解析视频文件，请检查路径是否正确。"}), 400
@@ -1095,7 +1095,8 @@ def upload_file():
     os.makedirs(upload_dir, exist_ok=True)
     save_path = os.path.join(upload_dir, safe_name)
     file.save(save_path)
-    info = get_video_info(save_path)
+    quick_probe = request.form.get('quick', '') == '1'
+    info = get_video_info(save_path, include_volume=not quick_probe)
     if not info:
         shutil.rmtree(upload_dir, ignore_errors=True)
         return jsonify({"success": False, "error": "上传的文件不是可解析的音视频文件。"}), 400
@@ -1395,15 +1396,22 @@ def fill_audio():
 def boost_volume():
     data = request.json or {}
     src_path = data.get('src_path', '').strip().strip('"').strip("'")
-    volume_db = float(data.get('volume_db', 0.0))
+    try:
+        volume_db = float(data.get('volume_db', 0.0))
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "error": "音量增益参数无效。"}), 400
+    if volume_db < -20 or volume_db > 30:
+        return jsonify({"success": False, "error": "音量增益必须在 -20 到 30 dB 之间。"}), 400
     out_path = data.get('out_path', '').strip().strip('"').strip("'")
     is_preview = data.get('is_preview', False)
     
     if not require_existing_file(src_path):
         return jsonify({"success": False, "error": f"源文件不存在: [{src_path}]"}), 400
 
-    info = get_video_info(src_path) or {}
+    info = get_video_info(src_path, include_volume=False) or {}
     has_video = info.get('width', 0) > 0 and info.get('height', 0) > 0
+    if not info.get('has_audio'):
+        return jsonify({"success": False, "error": "所选文件没有可处理的音轨。"}), 400
     src_ext = os.path.splitext(src_path)[1].lower()
     if not src_ext:
         src_ext = ".mp4" if has_video else ".mp3"
@@ -1430,9 +1438,11 @@ def boost_volume():
 
         if has_video:
             cmd.extend([
+                "-map", "0:v:0", "-map", "0:a:0", "-map_metadata", "0",
                 "-c:v", "copy",
                 "-af", af_filter,
                 "-c:a", "aac", "-b:a", "256k",
+                "-movflags", "+faststart",
                 temp_out
             ])
         else:
