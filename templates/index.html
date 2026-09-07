@@ -508,7 +508,7 @@
                     <div class="card-header" style="margin-bottom: 0.85rem;">
                         <div>
                             <div style="font-weight: 700;">🕒 调整已写入视频的相册时间</div>
-                            <div style="margin-top: 0.3rem; color: var(--text-secondary); font-size: 0.82rem; line-height: 1.5;">自动查找 DCIM、Pictures、Movies 中包含本工具视频的文件夹；仅调整 OPPO 相册的显示与排序时间，不修改视频内容。</div>
+                            <div style="margin-top: 0.3rem; color: var(--text-secondary); font-size: 0.82rem; line-height: 1.5;">自动查找 DCIM、Pictures、Movies 中的工具视频；无重编码修正 MP4 时间元数据并刷新 OPPO 相册，画面和声音保持原码流。</div>
                         </div>
                         <button class="btn btn-secondary" onclick="loadPhoneEvidenceVideos()">刷新列表</button>
                     </div>
@@ -539,7 +539,7 @@
                             </div>
                             <label style="display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.8rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; cursor: pointer; line-height: 1.5;">
                                 <input type="checkbox" id="phoneEvidenceTimeConfirmed" style="width: 18px; height: 18px; margin-top: 2px;">
-                                <span>我已通过预览核对视频和正确时间。操作会覆盖原相册时间，不创建手机视频副本；修改后请重新打开 OPPO 相册查看。</span>
+                                <span>我已通过预览核对视频和正确时间。操作会备份原视频到电脑，无重编码更新手机原文件的时间元数据，不创建手机副本。</span>
                             </label>
                             <button class="btn btn-success" onclick="updatePhoneEvidenceGalleryTime()" style="padding: 0.8rem; font-weight: 700;">✅ 修改相册显示时间</button>
                         </div>
@@ -1850,7 +1850,7 @@
             }
             if (!confirmed) { alert('请先勾选确认已核对视频和正确时间。'); return; }
 
-            showLoading('正在修改 OPPO 相册显示时间...');
+            showLoading('正在备份原视频并修正 OPPO 相册时间...');
             try {
                 const response = await fetch('/api/phone/video_evidence/update_gallery_time', {
                     method: 'POST',
@@ -1866,7 +1866,7 @@
                     return;
                 }
                 resultEl.style.color = 'var(--success)';
-                resultEl.innerText = `✅ 相册显示时间已修改\n原时间：${data.previous_gallery_time || '未知'}\n新时间：${data.gallery_time}\n视频内容：未修改\n修正记录：${data.log_path}\n\n请完全退出并重新打开 OPPO 相册查看。`;
+                resultEl.innerText = `✅ 相册显示时间已修改\n原时间：${data.previous_gallery_time || '未知'}\n新时间：${data.gallery_time}\n画面/声音：原码流，无重新编码\n手机副本：未创建\n电脑原件备份：${data.backup_path}\n修正记录：${data.log_path}\n\n请完全退出并重新打开 OPPO 相册查看。`;
                 const selectedFolder = document.getElementById('phoneEvidenceFolder').value;
                 await loadPhoneEvidenceVideos(name, selectedFolder);
             } catch (err) {

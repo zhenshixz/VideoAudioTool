@@ -32,6 +32,7 @@ DATA_ROOT = os.path.abspath(
 UPLOAD_FOLDER = os.path.join(DATA_ROOT, "uploads")
 PREVIEW_FOLDER = os.path.join(DATA_ROOT, "previews")
 EVIDENCE_LOG_FOLDER = os.path.join(DATA_ROOT, "evidence_logs")
+PHONE_BACKUP_FOLDER = os.path.join(EVIDENCE_LOG_FOLDER, "phone_video_backups")
 PHONE_EVIDENCE_DIR = "/sdcard/DCIM/VideoEvidence"
 PHONE_DCIM_DIR = "/sdcard/DCIM"
 PHONE_MEDIA_ROOTS = ("/sdcard/DCIM", "/sdcard/Pictures", "/sdcard/Movies")
@@ -42,6 +43,8 @@ app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_GB * 1024 * 1024 * 1024
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(PREVIEW_FOLDER, exist_ok=True)
 os.makedirs(EVIDENCE_LOG_FOLDER, exist_ok=True)
+os.makedirs(PHONE_BACKUP_FOLDER, exist_ok=True)
+os.makedirs(PHONE_BACKUP_FOLDER, exist_ok=True)
 
 
 def is_path_allowed(filepath):
@@ -138,6 +141,11 @@ def run_capture(cmd, timeout=30):
     if result.returncode != 0:
         details = (result.stderr or result.stdout or "命令执行失败").strip()
         raise RuntimeError(details[-2000:])
+    stderr = (result.stderr or "").strip()
+    # Android's `content` command can report provider/argument failures on
+    # stderr while still returning exit code 0. Treat those as real failures.
+    if "Error while accessing provider" in stderr or "[ERROR]" in stderr:
+        raise RuntimeError(stderr[-2000:])
     return result.stdout.strip()
 
 
@@ -230,24 +238,59 @@ def get_phone_status():
     }
 
 
-def query_phone_media_record(adb_path, serial, display_name):
+def normalize_phone_media_path(path):
+    normalized = (path or "").strip().replace('\\', '/')
+    for prefix in ("/storage/emulated/0", "/storage/self/primary"):
+        if normalized == prefix or normalized.startswith(f"{prefix}/"):
+            return f"/sdcard{normalized[len(prefix):]}"
+    return normalized
+
+
+def query_phone_media_record(adb_path, serial, display_name, remote_path=""):
     """Return the MediaStore row created for one of this tool's phone videos."""
     if not PHONE_EVIDENCE_NAME_RE.fullmatch(display_name):
         raise ValueError("视频文件名不属于本工具。")
+    # Quotes must survive the remote Android shell. A plain SQL quote is
+    # stripped by `adb shell` on recent ColorOS versions, producing
+    # `Invalid token <filename>` despite a zero process exit code.
+    escaped_name = display_name.replace("'", "''")
     query_cmd = [
         adb_path, "-s", serial, "shell", "content", "query",
         "--uri", "content://media/external/video/media",
-        "--projection", "_id:_display_name:datetaken:date_modified",
-        "--where", f"_display_name='{display_name}'"
+        "--projection", "_id:_display_name:datetaken:date_modified:_data:relative_path",
+        "--where", f"_display_name=\\'{escaped_name}\\'"
     ]
     output = run_capture(query_cmd, timeout=20)
-    id_match = re.search(r"(?:^|[ ,])_id=(\d+)", output)
-    taken_match = re.search(r"(?:^|[ ,])datetaken=(\d+)", output)
-    modified_match = re.search(r"(?:^|[ ,])date_modified=(\d+)", output)
+    records = []
+    for line in output.splitlines():
+        id_match = re.search(r"(?:^|[ ,])_id=(\d+)", line)
+        if not id_match:
+            continue
+        taken_match = re.search(r"(?:^|[ ,])datetaken=(\d+)", line)
+        modified_match = re.search(r"(?:^|[ ,])date_modified=(\d+)", line)
+        data_match = re.search(r"(?:^|, )_data=(.*?)(?:, relative_path=|$)", line)
+        records.append({
+            "id": int(id_match.group(1)),
+            "date_taken_ms": int(taken_match.group(1)) if taken_match else None,
+            "date_modified_s": int(modified_match.group(1)) if modified_match else None,
+            "phone_path": normalize_phone_media_path(data_match.group(1)) if data_match else "",
+            "raw": line
+        })
+
+    normalized_remote_path = normalize_phone_media_path(remote_path)
+    if normalized_remote_path:
+        for record in records:
+            if record["phone_path"] == normalized_remote_path:
+                record["raw"] = output
+                return record
+    elif records:
+        records[0]["raw"] = output
+        return records[0]
     return {
-        "id": int(id_match.group(1)) if id_match else None,
-        "date_taken_ms": int(taken_match.group(1)) if taken_match else None,
-        "date_modified_s": int(modified_match.group(1)) if modified_match else None,
+        "id": None,
+        "date_taken_ms": None,
+        "date_modified_s": None,
+        "phone_path": "",
         "raw": output
     }
 
@@ -504,7 +547,7 @@ def list_phone_video_evidence():
         beijing_tz = timezone(timedelta(hours=8))
         for remote_path in selected_paths:
             name = remote_path.rsplit('/', 1)[-1]
-            media = query_phone_media_record(adb_path, serial, name)
+            media = query_phone_media_record(adb_path, serial, name, remote_path)
             size = None
             try:
                 size = int(run_capture([
@@ -571,7 +614,20 @@ def update_phone_video_evidence_gallery_time():
     adb_path = phone["adb_path"]
     serial = phone["serial"]
     beijing_tz = timezone(timedelta(hours=8))
-    new_epoch_ms = int(local_dt.replace(tzinfo=beijing_tz).timestamp() * 1000)
+    aware_dt = local_dt.replace(tzinfo=beijing_tz)
+    new_epoch = int(aware_dt.timestamp())
+    new_epoch_ms = new_epoch * 1000
+    utc_creation_time = aware_dt.astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.000000Z')
+    operation_id = uuid.uuid4().hex[:8]
+    temp_dir = tempfile.mkdtemp(prefix="video_tool_gallery_time_")
+    original_local = os.path.join(temp_dir, f"original_{display_name}")
+    corrected_local = os.path.join(temp_dir, f"corrected_{display_name}")
+    remote_temp_path = f"{remote_path}.timefix_{operation_id}.mp4"
+    remote_rollback_path = f"{remote_path}.rollback_{operation_id}.mp4"
+    original_mtime = None
+    replaced_phone_file = False
+    backup_path = ""
+
     try:
         if remote_path not in set(discover_phone_evidence_paths(adb_path, serial)):
             return jsonify({
@@ -579,45 +635,113 @@ def update_phone_video_evidence_gallery_time():
                 "error": "所选视频已移动或不存在，请刷新文件夹和视频列表后重试。"
             }), 404
 
-        before = query_phone_media_record(adb_path, serial, display_name)
-        if before["id"] is None:
-            return jsonify({
-                "success": False,
-                "error": "手机媒体库中没有找到该视频。请先在 OPPO 相册中打开一次后重试。"
-            }), 404
-
-        update_output = run_capture([
-            adb_path, "-s", serial, "shell", "content", "update",
-            "--uri", "content://media/external/video/media",
-            "--bind", f"datetaken:l:{new_epoch_ms}",
-            "--where", f"_id={before['id']}"
-        ], timeout=20)
-        after = query_phone_media_record(adb_path, serial, display_name)
-        verified = (
-            after["id"] == before["id"]
-            and after["date_taken_ms"] is not None
-            and abs(after["date_taken_ms"] - new_epoch_ms) <= 2000
-        )
-        if not verified:
-            return jsonify({
-                "success": False,
-                "error": "手机未确认新的相册时间，请解锁手机并重新连接后再试。",
-                "details": update_output
-            }), 500
-
+        before = query_phone_media_record(adb_path, serial, display_name, remote_path)
         previous_text = None
         if before["date_taken_ms"] is not None:
             previous_text = datetime.fromtimestamp(
                 before["date_taken_ms"] / 1000, tz=beijing_tz
             ).strftime('%Y-%m-%d %H:%M:%S')
+        try:
+            original_mtime = int(run_capture([
+                adb_path, "-s", serial, "shell", "stat", "-c", "%Y", remote_path
+            ], timeout=15).splitlines()[-1])
+        except (RuntimeError, ValueError):
+            original_mtime = None
+
+        # Pull and preserve the exact original before touching the phone file.
+        run_capture([
+            adb_path, "-s", serial, "pull", remote_path, original_local
+        ], timeout=600)
+        if not os.path.isfile(original_local) or os.path.getsize(original_local) <= 0:
+            raise RuntimeError("从手机读取原视频失败，未对手机文件进行修改。")
+        source_hash = sha256_file(original_local)
+        os.makedirs(PHONE_BACKUP_FOLDER, exist_ok=True)
+        backup_name = f"{datetime.now(beijing_tz).strftime('%Y%m%d_%H%M%S')}_{operation_id}_{display_name}"
+        backup_path = os.path.join(PHONE_BACKUP_FOLDER, backup_name)
+        shutil.copy2(original_local, backup_path)
+        if sha256_file(backup_path) != source_hash:
+            raise RuntimeError("电脑端原视频备份校验失败，已停止操作。")
+
+        # Stream-copy all tracks: only MP4 container timestamps change.
+        run_cmd([
+            "ffmpeg", "-y", "-i", original_local,
+            "-map", "0", "-map_metadata", "0", "-c", "copy",
+            "-metadata", f"creation_time={utc_creation_time}",
+            "-metadata:s:v:0", f"creation_time={utc_creation_time}",
+            "-metadata:s:a:0", f"creation_time={utc_creation_time}",
+            corrected_local
+        ])
+        if not os.path.isfile(corrected_local) or os.path.getsize(corrected_local) <= 0:
+            raise RuntimeError("修正后的视频校验失败，已停止操作。")
+        os.utime(corrected_local, (new_epoch, new_epoch))
+        corrected_hash = sha256_file(corrected_local)
+
+        # Upload beside the original, verify, then atomically replace it.
+        run_capture([
+            adb_path, "-s", serial, "push", corrected_local, remote_temp_path
+        ], timeout=600)
+        remote_temp_hash = run_capture([
+            adb_path, "-s", serial, "shell", "sha256sum", remote_temp_path
+        ], timeout=180).split()[0].lower()
+        if remote_temp_hash != corrected_hash:
+            raise RuntimeError("修正文件传输校验失败，原手机视频未被替换。")
+        run_capture([
+            adb_path, "-s", serial, "shell", "mv", "-f", remote_temp_path, remote_path
+        ], timeout=30)
+        replaced_phone_file = True
+        try:
+            run_capture([
+                adb_path, "-s", serial, "shell", "touch", "-m", "-d",
+                f"@{new_epoch}", remote_path
+            ], timeout=15)
+        except RuntimeError:
+            run_capture([
+                adb_path, "-s", serial, "shell", "touch", "-m", "-t",
+                local_dt.strftime('%Y%m%d%H%M.%S'), remote_path
+            ], timeout=15)
+
+        run_capture([
+            adb_path, "-s", serial, "shell", "am", "broadcast",
+            "-a", "android.intent.action.MEDIA_SCANNER_SCAN_FILE",
+            "-d", f"file://{remote_path}"
+        ], timeout=20)
+        after = None
+        for wait_seconds in (1, 1, 2, 2):
+            time.sleep(wait_seconds)
+            after = query_phone_media_record(adb_path, serial, display_name, remote_path)
+            if (
+                after["date_taken_ms"] is not None
+                and abs(after["date_taken_ms"] - new_epoch_ms) <= 2000
+            ):
+                break
+        if not (
+            after
+            and after["date_taken_ms"] is not None
+            and abs(after["date_taken_ms"] - new_epoch_ms) <= 2000
+        ):
+            raise RuntimeError("OPPO 相册扫描后仍未显示新时间")
+
+        phone_hash = run_capture([
+            adb_path, "-s", serial, "shell", "sha256sum", remote_path
+        ], timeout=180).split()[0].lower()
+        if phone_hash != corrected_hash:
+            raise RuntimeError("手机最终文件校验失败")
+
         record = {
-            "record_type": "phone_gallery_display_time_adjustment",
+            "record_type": "phone_gallery_time_metadata_rewrite",
             "operation_time_beijing": datetime.now(beijing_tz).strftime('%Y-%m-%d %H:%M:%S'),
             "phone_path": remote_path,
-            "media_id": before["id"],
+            "media_id_before": before["id"],
+            "media_id_after": after["id"],
             "previous_gallery_time_beijing": previous_text,
             "new_gallery_time_beijing": event_time,
-            "video_content_modified": False,
+            "source_sha256": source_hash,
+            "corrected_sha256": corrected_hash,
+            "phone_sha256": phone_hash,
+            "computer_original_backup": backup_path,
+            "video_streams_reencoded": False,
+            "container_time_metadata_modified": True,
+            "phone_copy_created": False,
             "device": {
                 "serial": serial,
                 "model": phone.get("model"),
@@ -626,10 +750,11 @@ def update_phone_video_evidence_gallery_time():
             },
             "verification": {
                 "gallery_time_verified": True,
-                "media_date_taken_epoch_ms": after["date_taken_ms"]
+                "media_date_taken_epoch_ms": after["date_taken_ms"],
+                "phone_hash_matches": phone_hash == corrected_hash
             }
         }
-        log_name = f"phone_gallery_time_{local_dt.strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}.json"
+        log_name = f"phone_gallery_time_{local_dt.strftime('%Y%m%d_%H%M%S')}_{operation_id}.json"
         log_path = os.path.join(EVIDENCE_LOG_FOLDER, log_name)
         with open(log_path, "w", encoding="utf-8") as log_file:
             json.dump(record, log_file, ensure_ascii=False, indent=2)
@@ -641,11 +766,50 @@ def update_phone_video_evidence_gallery_time():
             "previous_gallery_time": previous_text,
             "gallery_time": event_time,
             "gallery_time_verified": True,
-            "video_content_modified": False,
+            "video_streams_reencoded": False,
+            "container_time_metadata_modified": True,
+            "phone_copy_created": False,
+            "backup_path": backup_path,
             "log_path": log_path
         })
     except Exception as exc:
-        return jsonify({"success": False, "error": str(exc)}), 500
+        rollback_error = ""
+        if replaced_phone_file and os.path.isfile(original_local):
+            try:
+                run_capture([
+                    adb_path, "-s", serial, "push", original_local, remote_rollback_path
+                ], timeout=600)
+                rollback_hash = run_capture([
+                    adb_path, "-s", serial, "shell", "sha256sum", remote_rollback_path
+                ], timeout=180).split()[0].lower()
+                if rollback_hash != sha256_file(original_local):
+                    raise RuntimeError("回滚文件传输校验失败")
+                run_capture([
+                    adb_path, "-s", serial, "shell", "mv", "-f",
+                    remote_rollback_path, remote_path
+                ], timeout=30)
+                if original_mtime is not None:
+                    run_capture([
+                        adb_path, "-s", serial, "shell", "touch", "-m", "-d",
+                        f"@{original_mtime}", remote_path
+                    ], timeout=15)
+                run_capture([
+                    adb_path, "-s", serial, "shell", "am", "broadcast",
+                    "-a", "android.intent.action.MEDIA_SCANNER_SCAN_FILE",
+                    "-d", f"file://{remote_path}"
+                ], timeout=20)
+            except Exception as rollback_exc:
+                rollback_error = f"；自动恢复失败：{rollback_exc}。原视频电脑备份：{backup_path}"
+        return jsonify({"success": False, "error": f"{exc}{rollback_error}"}), 500
+    finally:
+        for phone_temp_path in (remote_temp_path, remote_rollback_path):
+            try:
+                run_capture([
+                    adb_path, "-s", serial, "shell", "rm", "-f", phone_temp_path
+                ], timeout=15)
+            except Exception:
+                pass
+        shutil.rmtree(temp_dir, ignore_errors=True)
 
 
 @app.route('/api/phone/video_evidence/prepare_preview', methods=['POST'])
@@ -787,20 +951,15 @@ def fix_phone_video_time():
         ], timeout=20)
         time.sleep(2)
 
-        where_clause = f"_display_name='{remote_name}'"
         media_output = ""
         media_date_taken = None
-        query_cmd = [
-            adb_path, "-s", serial, "shell", "content", "query",
-            "--uri", "content://media/external/video/media",
-            "--projection", "_id:_display_name:datetaken:date_modified",
-            "--where", where_clause
-        ]
+        media_record = None
         try:
-            media_output = run_capture(query_cmd, timeout=20)
-            match = re.search(r"datetaken=(\d+)", media_output)
-            if match:
-                media_date_taken = int(match.group(1))
+            media_record = query_phone_media_record(
+                adb_path, serial, remote_name, remote_path
+            )
+            media_output = media_record["raw"]
+            media_date_taken = media_record["date_taken_ms"]
         except Exception:
             pass
 
@@ -810,16 +969,20 @@ def fix_phone_video_time():
         )
         if not gallery_time_verified:
             try:
+                if not media_record or media_record["id"] is None:
+                    raise RuntimeError("手机媒体库尚未建立新视频记录。")
                 run_capture([
                     adb_path, "-s", serial, "shell", "content", "update",
                     "--uri", "content://media/external/video/media",
                     "--bind", f"datetaken:l:{event_epoch_ms}",
-                    "--where", where_clause
+                    "--where", f"_id={media_record['id']}"
                 ], timeout=20)
-                media_output = run_capture(query_cmd, timeout=20)
-                match = re.search(r"datetaken=(\d+)", media_output)
-                if match:
-                    media_date_taken = int(match.group(1))
+                media_record = query_phone_media_record(
+                    adb_path, serial, remote_name, remote_path
+                )
+                media_output = media_record["raw"]
+                media_date_taken = media_record["date_taken_ms"]
+                if media_date_taken is not None:
                     gallery_time_verified = abs(media_date_taken - event_epoch_ms) <= 2000
             except Exception:
                 pass
